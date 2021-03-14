@@ -1,6 +1,7 @@
 import { bscChainId, bscRpcUrls, ethChainId, etherscanKey, ethRpcUrls } from "./consts";
 import _ from "lodash";
 import fetch from "node-fetch";
+import { Artifact } from "hardhat/types";
 
 function hre() {
   return require("hardhat");
@@ -12,6 +13,10 @@ export function web3() {
 
 export function network() {
   return hre().network;
+}
+
+export function artifact(name: string): Artifact {
+  return hre().artifacts.readArtifactSync(name);
 }
 
 export async function block(timestampMillis?: number): Promise<number> {
