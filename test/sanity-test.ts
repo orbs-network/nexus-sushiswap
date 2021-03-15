@@ -1,3 +1,0 @@
-describe("SanityTest", () => {
-  it("", async () => {});
-});

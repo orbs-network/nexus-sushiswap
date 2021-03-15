@@ -17,7 +17,7 @@ export function prime(options?: Options, overrides?: Options): PrimedOptions {
   return { from: web3().eth.defaultAccount, ...options, ...overrides };
 }
 
-export async function localContract<T extends Contract>(name: string, deployer: string, args: any[]) {
+export async function localContract<T extends Contract>(name: string, deployer: string, args?: any[]) {
   const nexusArtifact = artifact(name);
   const deployed = await contract<T>(nexusArtifact.abi).deploy({ data: nexusArtifact.bytecode, arguments: args }).send({ from: deployer });
   console.log(`deployed ${name} to ${deployed.options.address}`);
