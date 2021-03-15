@@ -32,8 +32,6 @@ contract Nexus is Ownable, ERC20("NexusEthUSDC", "NexusEthUSDC") {
         governance = msg.sender;
         IERC20(USDC).approve(SROUTER, uint256(-1)); // TODO needed?
         IERC20(USDC).approve(SLP, uint256(-1)); // TODO needed?
-        IERC20(WETH).approve(SROUTER, uint256(-1)); // TODO needed?
-        IERC20(WETH).approve(SLP, uint256(-1)); // TODO needed?
     }
 
     // --- views ---
@@ -53,25 +51,22 @@ contract Nexus is Ownable, ERC20("NexusEthUSDC", "NexusEthUSDC") {
         governance = _governance;
     }
 
+    fallback() external payable {}
+
+    receive() external payable {}
+
     function deposit() public payable onlyGovernance {
-        uint256 eth = msg.value; // TODO leftover for gas?
+        uint256 eth = msg.value;
         console.log("eth balance", address(this).balance);
         console.log("usd balance", IERC20(USDC).balanceOf(address(this)));
         console.log("price", ethToUsd(1e18));
 
         IUniswapV2Router02 router = IUniswapV2Router02(SROUTER);
-        IWETH(WETH).deposit{value: eth}();
-        (uint256 amountA, uint256 amountB, uint256 liquidity) =
-            router.addLiquidity(USDC, WETH, ethToUsd(eth), eth, 0, 0, address(this), block.timestamp);
-        console.log(amountA, amountB, liquidity);
 
-        //        (uint256 amountToken, uint256 amountETH, uint256 liquidity) =
-        //            router.addLiquidityETH{value: eth}(USDC, ethToUsd(eth) / 10000000, 0, 0, address(this), block.timestamp); //TODO minimums
-        //        console.log(amountToken, amountETH, liquidity);
+        (uint256 amountToken, uint256 amountETH, uint256 liquidity) =
+            router.addLiquidityETH{value: eth}(USDC, ethToUsd(eth), 0, 0, address(this), block.timestamp); //TODO minimums?
+        console.log(amountToken, amountETH, liquidity);
 
-        //        uint usd = router.getAmountOut(eth)
-        //        IUniswapV2Router02(SROUTER).addLiquidityETH(USDC)
-        //        uint256 sharesBefore = totalSupply();
         //        uint256 shares = ethAmount.mul(totalSupply()).div(sharesBefore);
         //        _mint(owner(), shares);
     }
