@@ -138,9 +138,13 @@ contract Nexus is Ownable, ERC20("NexusEthUSDC", "NexusEthUSDC") {
         console.log("usd balance", IERC20(USDC).balanceOf(address(this)));
         console.log("price", ethToUsd(1e18));
 
+        uint256 usdcAmount = ethToUsd(eth);
+
+        require(IERC20(USDC).balanceOf(address(this)) >= usdcAmount, "not enough free capital");
+
         IUniswapV2Router02 router = IUniswapV2Router02(SROUTER);
         //TODO minimums?
-        (amountToken, amountETH, liquidity) = router.addLiquidityETH{value: eth}(USDC, ethToUsd(eth), 0, 0, address(this), block.timestamp);
+        (amountToken, amountETH, liquidity) = router.addLiquidityETH{value: eth}(USDC, usdcAmount, 0, 0, address(this), block.timestamp);
 
         if (totalSupply() == 0) {
             shares = liquidity;
