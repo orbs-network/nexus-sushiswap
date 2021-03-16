@@ -1,8 +1,9 @@
 import fs from "fs";
 import path from "path";
 
-const configPath = path.resolve(process.env.npm_package_config_file!!);
-
 export function config() {
+  const resolved = process.env.npm_package_config_file || "";
+  if (!fs.existsSync(resolved)) return {};
+  const configPath = path.resolve(resolved);
   return JSON.parse(fs.readFileSync(configPath, { encoding: "utf8" }));
 }

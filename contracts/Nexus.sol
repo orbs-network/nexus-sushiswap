@@ -12,12 +12,20 @@ contract Nexus is Ownable, ERC20("NexusEthUSDC", "NexusEthUSDC") {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
+    struct UserInfo {
+        uint256 eth;
+        uint256 usd;
+        uint256 shares;
+    }
+
     // --- fields ---
     address public constant WETH = address(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
     address public constant USDC = address(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
     address public constant SLP = address(0x397FF1542f962076d0BFE58eA045FfA2d347ACa0); // Sushiswap USDC/ETH pair
     address public constant SROUTER = address(0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F); // Sushiswap Router2
     address public governance;
+    uint256 public totalLiquidity = 0;
+    mapping(address => UserInfo) public userInfos;
 
     // --- events ---
 
@@ -51,24 +59,18 @@ contract Nexus is Ownable, ERC20("NexusEthUSDC", "NexusEthUSDC") {
         governance = _governance;
     }
 
-    fallback() external payable {}
-
-    receive() external payable {}
-
     function deposit() public payable onlyGovernance {
         uint256 eth = msg.value;
-        console.log("eth balance", address(this).balance);
-        console.log("usd balance", IERC20(USDC).balanceOf(address(this)));
-        console.log("price", ethToUsd(1e18));
 
-        IUniswapV2Router02 router = IUniswapV2Router02(SROUTER);
+        (uint256 amountToken, uint256 amountETH, uint256 liquidity, uint256 shares) = _addLiquidity(eth);
 
-        (uint256 amountToken, uint256 amountETH, uint256 liquidity) =
-            router.addLiquidityETH{value: eth}(USDC, ethToUsd(eth), 0, 0, address(this), block.timestamp); //TODO minimums?
-        console.log(amountToken, amountETH, liquidity);
+        UserInfo storage userInfo = userInfos[msg.sender];
+        userInfo.eth = userInfo.eth.add(amountETH);
+        userInfo.usd = userInfo.usd.add(amountToken);
+        userInfo.shares = userInfo.shares.add(shares);
 
-        //        uint256 shares = ethAmount.mul(totalSupply()).div(sharesBefore);
-        //        _mint(owner(), shares);
+        totalLiquidity = totalLiquidity.add(liquidity);
+        _mint(owner(), shares);
     }
 
     function withdraw(uint256 shares) public onlyGovernance {
@@ -117,10 +119,35 @@ contract Nexus is Ownable, ERC20("NexusEthUSDC", "NexusEthUSDC") {
         withdrawFreeCapital();
     }
 
-    // ---------------------------------- mocking sushi: ----------------------------------
-    uint256 public priceInUSD = 2000 * 1e6;
+    // --- unrestricted ---
 
-    function setEthPrice(uint256 _priceInUSD) public {
-        priceInUSD = _priceInUSD;
+    fallback() external payable {}
+
+    // --- internals ---
+
+    function _addLiquidity(uint256 eth)
+        internal
+        returns (
+            uint256 amountToken,
+            uint256 amountETH,
+            uint256 liquidity,
+            uint256 shares
+        )
+    {
+        console.log("eth balance", address(this).balance);
+        console.log("usd balance", IERC20(USDC).balanceOf(address(this)));
+        console.log("price", ethToUsd(1e18));
+
+        IUniswapV2Router02 router = IUniswapV2Router02(SROUTER);
+        //TODO minimums?
+        (amountToken, amountETH, liquidity) = router.addLiquidityETH{value: eth}(USDC, ethToUsd(eth), 0, 0, address(this), block.timestamp);
+
+        if (totalSupply() == 0) {
+            shares = liquidity;
+        } else {
+            shares = (liquidity.mul(totalSupply())).div(totalLiquidity);
+        }
+
+        console.log(amountToken, amountETH, liquidity, shares);
     }
 }

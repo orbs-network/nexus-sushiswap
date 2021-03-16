@@ -11,9 +11,10 @@ describe("Nexus", () => {
     const deployer = await Wallet.fake();
     const nexus = await localContract<Nexus>("Nexus", deployer.address);
     expect(await nexus.methods.USDC().call()).eq(Tokens.eth.USDC().address);
+    //TODO
   });
 
-  it.only("deposit & withdraw with shares", async () => {
+  it("deposit & withdraw with shares", async () => {
     const deployer = await Wallet.fake();
     deployer.setAsDefaultSigner();
 
