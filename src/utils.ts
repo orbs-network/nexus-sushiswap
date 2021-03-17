@@ -3,7 +3,7 @@ import _ from "lodash";
 import Web3 from "web3";
 import BN from "bn.js";
 
-export const alot = bn18("1,000,000,000,000,000,000,000,000,000,000,000"); //decillion ether
+export const many = bn18("1,000,000,000,000,000,000,000,000,000,000,000"); //decillion ether
 export const ether = bn18("1");
 export const zero = bn("0");
 

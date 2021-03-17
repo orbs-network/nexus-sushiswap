@@ -1,5 +1,4 @@
-import { alot, bn } from "../utils";
-import { contract, Options, prime } from "../extensions";
+import { contract } from "../extensions";
 import { ERC20 } from "../../typechain-hardhat/ERC20";
 
 const abi = require("../../artifacts/@openzeppelin/contracts/token/ERC20/ERC20.sol/ERC20.json").abi;
@@ -33,23 +32,11 @@ export namespace Tokens {
 export interface Token extends ERC20 {
   displayName: string;
   address: string;
-
-  approveAll(spenderAddress: string, options?: Options): Promise<void>;
 }
 
 export function newToken(name: string, address: string) {
   const token = contract<Token>(abi, address);
   token.displayName = name;
   token.address = address;
-
-  token.approveAll = async (spenderAddress: string, options?: Options) => {
-    const primed = prime(options);
-    const allowance = await token.methods.allowance(primed.from, spenderAddress).call(primed);
-    if (bn(allowance).lt(alot.divn(2))) {
-      const receipt = await token.methods.approve(spenderAddress, alot).send(primed);
-      console.log("🟢 approved", name, "tx", receipt.transactionHash);
-    }
-  };
-
   return token;
 }

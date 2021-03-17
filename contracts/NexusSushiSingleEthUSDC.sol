@@ -12,7 +12,7 @@ contract NexusSushiSingleEthUSDC is Ownable, ERC20("NexusSushiSingleEthUSDC", "N
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
-    struct UserInfo {
+    struct Account {
         uint256 eth;
         uint256 usd;
         uint256 shares;
@@ -24,8 +24,8 @@ contract NexusSushiSingleEthUSDC is Ownable, ERC20("NexusSushiSingleEthUSDC", "N
     address public constant SLP = address(0x397FF1542f962076d0BFE58eA045FfA2d347ACa0); // Sushiswap USDC/ETH pair
     address public constant SROUTER = address(0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F); // Sushiswap Router2
     address public governance;
-    uint256 public totalLiquidity = 0;
-    mapping(address => UserInfo) public userInfos;
+    uint256 public totalLiquidity;
+    mapping(address => Account) public accounts;
 
     // --- events ---
 
@@ -62,39 +62,61 @@ contract NexusSushiSingleEthUSDC is Ownable, ERC20("NexusSushiSingleEthUSDC", "N
         console.log("usd balance", IERC20(USDC).balanceOf(address(this)));
         console.log("price", ethToUsd(1e18));
 
-        uint256 eth = msg.value;
+        (uint256 amountToken, uint256 amountETH, uint256 liquidity) = _addLiquidity();
 
-        (uint256 amountToken, uint256 amountETH, uint256 liquidity, uint256 shares) = _addLiquidity(eth);
+        uint256 shares;
+        if (totalSupply() == 0) {
+            shares = liquidity;
+        } else {
+            shares = liquidity.mul(totalSupply()).div(totalLiquidity);
+        }
 
-        UserInfo storage userInfo = userInfos[account];
-        userInfo.eth = userInfo.eth.add(amountETH);
-        userInfo.usd = userInfo.usd.add(amountToken);
-        userInfo.shares = userInfo.shares.add(shares);
+        Account storage acc = accounts[account];
+        acc.usd = acc.usd.add(amountToken);
+        acc.eth = acc.eth.add(amountETH);
+        acc.shares = acc.shares.add(shares);
 
         totalLiquidity = totalLiquidity.add(liquidity);
-        _mint(owner(), shares);
+        _mint(account, shares);
     }
 
-    function withdraw(uint256 shares) public onlyGovernance {
-        _burn(owner(), shares);
+    function withdraw(address payable account, uint256 shares) public onlyGovernance {
+        console.log("eth balance", address(this).balance);
+        console.log("usd balance", IERC20(USDC).balanceOf(address(this)));
+        console.log("price", ethToUsd(1e18));
+
+        Account storage acc = accounts[account];
+        shares = _min(shares, acc.shares);
+        require(shares > 0, "0 shares");
+
+        uint256 liquidity = shares.mul(totalLiquidity).div(totalSupply());
+
+        (uint256 amountToken, uint256 amountETH) = _removeLiquidity(liquidity);
+
+        uint256 usdEntry = acc.usd.mul(shares).div(acc.shares);
+        uint256 ethEntry = acc.eth.mul(shares).div(acc.shares);
+        (uint256 usdExit, uint256 ethExit) = _applyRebalanceStrategy(amountToken, amountETH, usdEntry, ethEntry);
+        require(ethExit <= ethEntry, "ethExit > ethEntry");
+
+        require(usdEntry <= acc.usd, "usdEntry > acc.usd");
+        require(ethEntry <= acc.eth, "ethEntry > acc.eth");
+        require(shares <= acc.shares, "shares > acc.shares");
+        acc.usd = acc.usd.sub(usdEntry);
+        acc.eth = acc.eth.sub(ethEntry);
+        acc.shares = acc.shares.sub(shares);
+
+        require(liquidity <= totalLiquidity, "liquidity > totalLiquidity");
+        totalLiquidity = totalLiquidity.sub(liquidity);
+        _burn(account, shares);
+
+        console.log("eth balance", address(this).balance);
+        console.log("usd balance", IERC20(USDC).balanceOf(address(this)));
+        console.log("ethExit", ethExit);
+        account.transfer(ethExit);
     }
 
-    function withdrawAll() public onlyOwner onlyGovernance {
-        withdraw(balanceOf(owner()));
-    }
-
-    // withdraw all non-invested assets
-    function rescueAssets(address[] memory tokens_) external onlyOwner {
-        uint256 ercLen = tokens_.length;
-        for (uint256 i = 0; i < ercLen; i++) {
-            address token = tokens_[i];
-            if (token != USDC) {
-                uint256 balance = IERC20(token).balanceOf(address(this));
-                if (balance > 0) {
-                    IERC20(token).safeTransfer(owner(), balance);
-                }
-            }
-        }
+    function withdrawAll(address payable account) public onlyGovernance {
+        withdraw(account, balanceOf(account));
     }
 
     // --- owner actions ---
@@ -121,22 +143,34 @@ contract NexusSushiSingleEthUSDC is Ownable, ERC20("NexusSushiSingleEthUSDC", "N
         withdrawFreeCapital();
     }
 
+    // withdraw all non-invested assets
+    function rescueAssets(address[] memory tokens_) external onlyOwner {
+        uint256 ercLen = tokens_.length;
+        for (uint256 i = 0; i < ercLen; i++) {
+            address token = tokens_[i];
+            if (token != USDC && token != WETH) {
+                uint256 balance = IERC20(token).balanceOf(address(this));
+                if (balance > 0) {
+                    IERC20(token).safeTransfer(owner(), balance);
+                }
+            }
+        }
+    }
+
     // --- internals ---
 
-    function _addLiquidity(uint256 eth)
+    function _addLiquidity()
         private
         returns (
             uint256 amountToken,
             uint256 amountETH,
-            uint256 liquidity,
-            uint256 shares
+            uint256 liquidity
         )
     {
-        uint256 usdcAmount = ethToUsd(eth);
-
+        uint256 usdcAmount = ethToUsd(msg.value);
         require(IERC20(USDC).balanceOf(address(this)) >= usdcAmount, "not enough free capital");
 
-        (amountToken, amountETH, liquidity) = IUniswapV2Router02(SROUTER).addLiquidityETH{value: eth}(
+        (amountToken, amountETH, liquidity) = IUniswapV2Router02(SROUTER).addLiquidityETH{value: msg.value}(
             USDC,
             usdcAmount,
             0, //TODO minimums?
@@ -144,13 +178,28 @@ contract NexusSushiSingleEthUSDC is Ownable, ERC20("NexusSushiSingleEthUSDC", "N
             address(this),
             block.timestamp // solhint-disable-line not-rely-on-time
         );
+        console.log(amountToken, amountETH, liquidity);
+    }
 
-        if (totalSupply() == 0) {
-            shares = liquidity;
-        } else {
-            shares = (liquidity.mul(totalSupply())).div(totalLiquidity);
-        }
-        console.log(amountToken, amountETH, liquidity, shares);
+    function _removeLiquidity(uint256 liquidity) private returns (uint256 amountToken, uint256 amountETH) {
+        // TODO
+        amountToken = 0;
+        amountETH = 0;
+    }
+
+    function _applyRebalanceStrategy(
+        uint256 amountToken,
+        uint256 amountETH,
+        uint256 usdEntry,
+        uint256 ethEntry
+    ) private pure returns (uint256 usdExit, uint256 ethExit) {
+        // TODO
+        usdExit = usdEntry;
+        ethExit = ethEntry;
+    }
+
+    function _min(uint256 a, uint256 b) private pure returns (uint256) {
+        return a < b ? a : b;
     }
 
     // --- unrestricted ---
