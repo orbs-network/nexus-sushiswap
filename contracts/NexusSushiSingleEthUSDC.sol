@@ -5,10 +5,10 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "./SushiswapRouter.sol";
+import "./ISushiswapRouter.sol";
 import "hardhat/console.sol";
 
-contract Nexus is Ownable, ERC20("NexusEthUSDC", "NexusEthUSDC") {
+contract NexusSushiSingleEthUSDC is Ownable, ERC20("NexusSushiSingleEthUSDC", "NexusSushiSingleEthUSDC") {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
@@ -38,8 +38,7 @@ contract Nexus is Ownable, ERC20("NexusEthUSDC", "NexusEthUSDC") {
 
     constructor() {
         governance = msg.sender;
-        IERC20(USDC).approve(SROUTER, uint256(-1)); // TODO needed?
-        IERC20(USDC).approve(SLP, uint256(-1)); // TODO needed?
+        IERC20(USDC).approve(SROUTER, uint256(-1));
     }
 
     // --- views ---
@@ -54,17 +53,20 @@ contract Nexus is Ownable, ERC20("NexusEthUSDC", "NexusEthUSDC") {
     // --- gov actions ---
 
     function setGovernance(address _governance) public onlyGovernance {
-        //TODO onlyOwner?
         require(_governance != address(0), "null governance");
         governance = _governance;
     }
 
-    function deposit() public payable onlyGovernance {
+    function deposit(address account) public payable onlyGovernance {
+        console.log("eth balance", address(this).balance);
+        console.log("usd balance", IERC20(USDC).balanceOf(address(this)));
+        console.log("price", ethToUsd(1e18));
+
         uint256 eth = msg.value;
 
         (uint256 amountToken, uint256 amountETH, uint256 liquidity, uint256 shares) = _addLiquidity(eth);
 
-        UserInfo storage userInfo = userInfos[msg.sender];
+        UserInfo storage userInfo = userInfos[account];
         userInfo.eth = userInfo.eth.add(amountETH);
         userInfo.usd = userInfo.usd.add(amountToken);
         userInfo.shares = userInfo.shares.add(shares);
@@ -119,14 +121,10 @@ contract Nexus is Ownable, ERC20("NexusEthUSDC", "NexusEthUSDC") {
         withdrawFreeCapital();
     }
 
-    // --- unrestricted ---
-
-    fallback() external payable {}
-
     // --- internals ---
 
     function _addLiquidity(uint256 eth)
-        internal
+        private
         returns (
             uint256 amountToken,
             uint256 amountETH,
@@ -134,24 +132,28 @@ contract Nexus is Ownable, ERC20("NexusEthUSDC", "NexusEthUSDC") {
             uint256 shares
         )
     {
-        console.log("eth balance", address(this).balance);
-        console.log("usd balance", IERC20(USDC).balanceOf(address(this)));
-        console.log("price", ethToUsd(1e18));
-
         uint256 usdcAmount = ethToUsd(eth);
 
         require(IERC20(USDC).balanceOf(address(this)) >= usdcAmount, "not enough free capital");
 
-        IUniswapV2Router02 router = IUniswapV2Router02(SROUTER);
-        //TODO minimums?
-        (amountToken, amountETH, liquidity) = router.addLiquidityETH{value: eth}(USDC, usdcAmount, 0, 0, address(this), block.timestamp);
+        (amountToken, amountETH, liquidity) = IUniswapV2Router02(SROUTER).addLiquidityETH{value: eth}(
+            USDC,
+            usdcAmount,
+            0, //TODO minimums?
+            0,
+            address(this),
+            block.timestamp // solhint-disable-line not-rely-on-time
+        );
 
         if (totalSupply() == 0) {
             shares = liquidity;
         } else {
             shares = (liquidity.mul(totalSupply())).div(totalLiquidity);
         }
-
         console.log(amountToken, amountETH, liquidity, shares);
     }
+
+    // --- unrestricted ---
+
+    receive() external payable {} // solhint-disable-line no-empty-blocks
 }

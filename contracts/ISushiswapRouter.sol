@@ -1,10 +1,5 @@
 //SPDX-License-Identifier: MIT
-
-/**
- *Submitted for verification at Etherscan.io on 2020-09-04
- */
-
-// File: contracts/uniswapv2/interfaces/IUniswapV2Pair.sol
+//solhint-disable
 
 pragma solidity ^0.7.6;
 
@@ -52,7 +47,14 @@ interface IUniswapV2Pair {
 
     event Mint(address indexed sender, uint256 amount0, uint256 amount1);
     event Burn(address indexed sender, uint256 amount0, uint256 amount1, address indexed to);
-    event Swap(address indexed sender, uint256 amount0In, uint256 amount1In, uint256 amount0Out, uint256 amount1Out, address indexed to);
+    event Swap(
+        address indexed sender,
+        uint256 amount0In,
+        uint256 amount1In,
+        uint256 amount0Out,
+        uint256 amount1Out,
+        address indexed to
+    );
     event Sync(uint112 reserve0, uint112 reserve1);
 
     function MINIMUM_LIQUIDITY() external pure returns (uint256);
@@ -95,8 +97,6 @@ interface IUniswapV2Pair {
 
     function initialize(address, address) external;
 }
-
-// File: contracts/uniswapv2/interfaces/IUniswapV2Router01.sol
 
 interface IUniswapV2Router01 {
     function factory() external pure returns (address);
@@ -251,8 +251,6 @@ interface IUniswapV2Router01 {
     function getAmountsIn(uint256 amountOut, address[] calldata path) external view returns (uint256[] memory amounts);
 }
 
-// File: contracts/uniswapv2/interfaces/IUniswapV2Router02.sol
-
 interface IUniswapV2Router02 is IUniswapV2Router01 {
     function removeLiquidityETHSupportingFeeOnTransferTokens(
         address token,
@@ -300,8 +298,6 @@ interface IUniswapV2Router02 is IUniswapV2Router01 {
     ) external;
 }
 
-// File: contracts/uniswapv2/interfaces/IUniswapV2Factory.sol
-
 interface IUniswapV2Factory {
     event PairCreated(address indexed token0, address indexed token1, address pair, uint256);
 
@@ -325,8 +321,6 @@ interface IUniswapV2Factory {
 
     function setMigrator(address) external;
 }
-
-// File: contracts/uniswapv2/interfaces/IERC20.sol
 
 interface IERC20Uniswap {
     event Approval(address indexed owner, address indexed spender, uint256 value);
@@ -354,8 +348,6 @@ interface IERC20Uniswap {
         uint256 value
     ) external returns (bool);
 }
-
-// File: contracts/uniswapv2/interfaces/IWETH.sol
 
 interface IWETH {
     function deposit() external payable;

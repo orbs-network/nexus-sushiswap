@@ -1,10 +1,5 @@
 //SPDX-License-Identifier: MIT
-
-/**
- *Submitted for verification at Etherscan.io on 2020-09-05
- */
-
-// File: contracts/uniswapv2/interfaces/IUniswapV2Factory.sol
+//solhint-disable
 
 pragma solidity ^0.7.6;
 
@@ -31,8 +26,6 @@ interface IUniswapV2Factory {
 
     function setMigrator(address) external;
 }
-
-// File: contracts/uniswapv2/interfaces/IERC20.sol
 
 interface IERC20Uniswap {
     event Approval(address indexed owner, address indexed spender, uint256 value);
@@ -61,8 +54,6 @@ interface IERC20Uniswap {
     ) external returns (bool);
 }
 
-// File: contracts/uniswapv2/interfaces/IUniswapV2Callee.sol
-
 interface IUniswapV2Callee {
     function uniswapV2Call(
         address sender,
@@ -72,9 +63,6 @@ interface IUniswapV2Callee {
     ) external;
 }
 
-// File: contracts/uniswapv2/UniswapV2Pair.sol
-
 interface IMigrator {
-    // Return the desired amount of liquidity token that the migrator wants.
     function desiredLiquidity() external view returns (uint256);
 }
