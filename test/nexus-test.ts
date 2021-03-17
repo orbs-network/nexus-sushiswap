@@ -2,12 +2,12 @@ import { contract, deployContract } from "../src/extensions";
 import { Wallet } from "../src/impl/wallet";
 import { expect } from "chai";
 import { Tokens } from "../src/impl/token";
-import { bn, bn18, ether, many } from "../src/utils";
+import { bn18, ether, many } from "../src/utils";
 import { IUniswapV2Router02 } from "../typechain-hardhat/IUniswapV2Router02";
 import { NexusSushiSingleEthUSDC } from "../typechain-hardhat/NexusSushiSingleEthUSDC";
 
 describe("LiquidityNexus with SushiSwap single sided ETH/USDC", () => {
-  it("sponsor can emergencyWithdraw", async () => {
+  it("owner can emergencyWithdraw", async () => {
     const deployer = await Wallet.fake();
     const nexus = await deployContract<NexusSushiSingleEthUSDC>("NexusSushiSingleEthUSDC", deployer.address);
 
@@ -15,7 +15,7 @@ describe("LiquidityNexus with SushiSwap single sided ETH/USDC", () => {
     //TODO
   });
 
-  it.only("deposit & withdraw", async () => {
+  it.only("user as governance, 100% share, deposit & withdraw", async () => {
     const deployer = await Wallet.fake();
     deployer.setAsDefaultSigner();
     const nexus = await deployContract<NexusSushiSingleEthUSDC>("NexusSushiSingleEthUSDC", deployer.address);
@@ -36,13 +36,13 @@ describe("LiquidityNexus with SushiSwap single sided ETH/USDC", () => {
     expect(account.usd).not.bignumber.zero;
     expect(await nexus.methods.totalSupply().call()).bignumber.eq(account.shares);
 
-    // await nexus.methods.withdrawAll(user.address).send({ from: user.address });
-    // expect(await nexus.methods.totalSupply().call()).bignumber.zero;
-    // account = await nexus.methods.accounts(user.address).call();
-    // expect(account.eth).bignumber.zero;
-    // expect(account.usd).bignumber.zero;
-    // expect(account.shares).bignumber.zero;
-    // expect(await user.getBalance()).bignumber.closeTo(startBalance, bn("0.1"));
+    await nexus.methods.withdrawAll(user.address).send({ from: user.address });
+    expect(await nexus.methods.totalSupply().call()).bignumber.zero;
+    account = await nexus.methods.accounts(user.address).call();
+    expect(account.eth).bignumber.zero;
+    expect(account.usd).bignumber.zero;
+    expect(account.shares).bignumber.zero;
+    expect(await user.getBalance()).bignumber.closeTo(startBalance, bn18("0.1"));
   });
 
   async function buyUSDC(wallet: Wallet) {

@@ -1,4 +1,4 @@
-//SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.7.6;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
@@ -32,13 +32,14 @@ contract NexusSushiSingleEthUSDC is Ownable, ERC20("NexusSushiSingleEthUSDC", "N
     // --- modifiers ---
 
     modifier onlyGovernance() {
-        require(governance == msg.sender, "Not governance");
+        require(governance == msg.sender, "not governance");
         _;
     }
 
     constructor() {
         governance = msg.sender;
         IERC20(USDC).approve(SROUTER, uint256(-1));
+        IERC20(SLP).approve(SROUTER, uint256(-1));
     }
 
     // --- views ---
@@ -52,7 +53,7 @@ contract NexusSushiSingleEthUSDC is Ownable, ERC20("NexusSushiSingleEthUSDC", "N
 
     // --- gov actions ---
 
-    function setGovernance(address _governance) public onlyGovernance {
+    function setGovernance(address _governance) external onlyGovernance {
         require(_governance != address(0), "null governance");
         governance = _governance;
     }
@@ -98,14 +99,10 @@ contract NexusSushiSingleEthUSDC is Ownable, ERC20("NexusSushiSingleEthUSDC", "N
         (uint256 usdExit, uint256 ethExit) = _applyRebalanceStrategy(amountToken, amountETH, usdEntry, ethEntry);
         require(ethExit <= ethEntry, "ethExit > ethEntry");
 
-        require(usdEntry <= acc.usd, "usdEntry > acc.usd");
-        require(ethEntry <= acc.eth, "ethEntry > acc.eth");
-        require(shares <= acc.shares, "shares > acc.shares");
         acc.usd = acc.usd.sub(usdEntry);
         acc.eth = acc.eth.sub(ethEntry);
         acc.shares = acc.shares.sub(shares);
 
-        require(liquidity <= totalLiquidity, "liquidity > totalLiquidity");
         totalLiquidity = totalLiquidity.sub(liquidity);
         _burn(account, shares);
 
@@ -115,7 +112,7 @@ contract NexusSushiSingleEthUSDC is Ownable, ERC20("NexusSushiSingleEthUSDC", "N
         account.transfer(ethExit);
     }
 
-    function withdrawAll(address payable account) public onlyGovernance {
+    function withdrawAll(address payable account) external onlyGovernance {
         withdraw(account, balanceOf(account));
     }
 
@@ -127,7 +124,7 @@ contract NexusSushiSingleEthUSDC is Ownable, ERC20("NexusSushiSingleEthUSDC", "N
         }
     }
 
-    function depositAllCapital() public onlyOwner {
+    function depositAllCapital() external onlyOwner {
         depositCapital(IERC20(USDC).balanceOf(owner()));
     }
 
@@ -182,9 +179,16 @@ contract NexusSushiSingleEthUSDC is Ownable, ERC20("NexusSushiSingleEthUSDC", "N
     }
 
     function _removeLiquidity(uint256 liquidity) private returns (uint256 amountToken, uint256 amountETH) {
-        // TODO
-        amountToken = 0;
-        amountETH = 0;
+        amountETH = IUniswapV2Router02(SROUTER).removeLiquidityETHSupportingFeeOnTransferTokens( //in case they decide to add a fee
+            USDC,
+            liquidity,
+            0, //TODO minimums?
+            0,
+            address(this),
+            block.timestamp // solhint-disable-line not-rely-on-time
+        );
+        amountToken = ethToUsd(amountETH);
+        console.log(amountToken, amountETH, liquidity);
     }
 
     function _applyRebalanceStrategy(

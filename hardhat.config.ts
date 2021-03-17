@@ -24,6 +24,7 @@ const config: HardhatUserConfig = {
       forking: {
         url: random(ethRpcUrls),
       },
+      blockGasLimit: 12e6,
     },
     bsc: {
       chainId: bscChainId,
