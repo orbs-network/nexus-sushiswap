@@ -7,19 +7,38 @@ import { IUniswapV2Router02 } from "../typechain-hardhat/IUniswapV2Router02";
 import { NexusSushiSingleEthUSDC } from "../typechain-hardhat/NexusSushiSingleEthUSDC";
 
 describe("LiquidityNexus with SushiSwap single sided ETH/USDC", () => {
-  it("owner can emergencyWithdraw", async () => {
+  it("sanity", async () => {
     const deployer = await Wallet.fake();
     const nexus = await deployContract<NexusSushiSingleEthUSDC>("NexusSushiSingleEthUSDC", deployer.address);
-
     expect(await nexus.methods.USDC().call()).eq(Tokens.eth.USDC().address);
-    //TODO
+    expect(await nexus.methods.WETH().call()).eq(Tokens.eth.WETH().address);
+    expect(await nexus.methods.stopped().call()).is.false;
+    expect(await nexus.methods.governance().call())
+      .eq(await nexus.methods.owner().call())
+      .eq(deployer.address);
+  });
+  it("owner can emergencyLiquidate", async () => {
+    const deployer = await Wallet.fake();
+    deployer.setAsDefaultSigner();
+    const nexus = await deployContract<NexusSushiSingleEthUSDC>("NexusSushiSingleEthUSDC", deployer.address);
+    await buyUSDC(deployer);
+    await supplyCapital(nexus);
+
+    expect(await nexus.methods.stopped().call()).to.be.false;
+    expect(await Tokens.eth.USDC().methods.balanceOf(nexus.options.address).call()).not.bignumber.zero;
+    expect(await Tokens.eth.USDC().methods.balanceOf(deployer.address).call()).bignumber.zero;
+
+    await nexus.methods.emergencyLiquidate().send();
+
+    expect(await Tokens.eth.USDC().methods.balanceOf(nexus.options.address).call()).bignumber.zero;
+    expect(await Tokens.eth.USDC().methods.balanceOf(deployer.address).call()).not.bignumber.zero;
+    expect(await nexus.methods.stopped().call()).to.be.true;
   });
 
   it("user as governance, 100% share, deposit & withdraw", async () => {
     const deployer = await Wallet.fake();
     deployer.setAsDefaultSigner();
     const nexus = await deployContract<NexusSushiSingleEthUSDC>("NexusSushiSingleEthUSDC", deployer.address);
-
     await buyUSDC(deployer);
     await supplyCapital(nexus);
 
@@ -44,19 +63,19 @@ describe("LiquidityNexus with SushiSwap single sided ETH/USDC", () => {
     expect(account.shares).bignumber.zero;
     expect(await user.getBalance()).bignumber.closeTo(startBalance, bn18("0.1"));
   });
-
-  async function buyUSDC(wallet: Wallet) {
-    const router = contract<IUniswapV2Router02>(
-      require("../artifacts/contracts/ISushiswapRouter.sol/IUniswapV2Router02.json").abi,
-      "0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F"
-    );
-    await router.methods
-      .swapExactETHForTokens(0, [Tokens.eth.WETH().address, Tokens.eth.USDC().address], wallet.address, many)
-      .send({ value: (await wallet.getBalance()).divn(2) });
-  }
-
-  async function supplyCapital(nexus: NexusSushiSingleEthUSDC) {
-    await Tokens.eth.USDC().methods.approve(nexus.options.address, many).send();
-    await nexus.methods.depositAllCapital().send();
-  }
 });
+
+async function buyUSDC(wallet: Wallet) {
+  const router = contract<IUniswapV2Router02>(
+    require("../artifacts/contracts/ISushiswapRouter.sol/IUniswapV2Router02.json").abi,
+    "0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F"
+  );
+  await router.methods
+    .swapExactETHForTokens(0, [Tokens.eth.WETH().address, Tokens.eth.USDC().address], wallet.address, many)
+    .send({ value: (await wallet.getBalance()).divn(2) });
+}
+
+async function supplyCapital(nexus: NexusSushiSingleEthUSDC) {
+  await Tokens.eth.USDC().methods.approve(nexus.options.address, many).send();
+  await nexus.methods.depositAllCapital().send();
+}

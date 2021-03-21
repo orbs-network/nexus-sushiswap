@@ -25,8 +25,8 @@ contract NexusSushiSingleEthUSDC is Ownable, ERC20("NexusSushiSingleEthUSDC", "N
     address public constant SLP = address(0x397FF1542f962076d0BFE58eA045FfA2d347ACa0); // Sushiswap USDC/ETH pair
     address public constant SROUTER = address(0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F); // Sushiswap Router2
     address public governance;
-    uint256 public totalLiquidity;
     mapping(address => Account) public accounts;
+    bool public stopped = false;
 
     // --- events ---
 
@@ -45,7 +45,11 @@ contract NexusSushiSingleEthUSDC is Ownable, ERC20("NexusSushiSingleEthUSDC", "N
 
     // --- views ---
 
-    function ethToUsd(uint256 ethAmount) public view returns (uint256 usdAmount) {
+    function totalLiquidity() public view returns (uint256) {
+        return IERC20(SLP).balanceOf(address(this));
+    }
+
+    function ethPrice(uint256 ethAmount) public view returns (uint256 usdAmount) {
         address[] memory path = new address[](2);
         path[0] = WETH;
         path[1] = USDC;
@@ -59,10 +63,10 @@ contract NexusSushiSingleEthUSDC is Ownable, ERC20("NexusSushiSingleEthUSDC", "N
         governance = _governance;
     }
 
-    function deposit(address account) public payable onlyGovernance {
+    function deposit(address payable account) public payable onlyGovernance {
         console.log("eth balance", address(this).balance);
         console.log("usd balance", IERC20(USDC).balanceOf(address(this)));
-        console.log("price", ethToUsd(1e18));
+        console.log("price", ethPrice(1e18));
 
         (uint256 amountToken, uint256 amountETH, uint256 liquidity) = _addLiquidity();
 
@@ -70,7 +74,7 @@ contract NexusSushiSingleEthUSDC is Ownable, ERC20("NexusSushiSingleEthUSDC", "N
         if (totalSupply() == 0) {
             shares = liquidity;
         } else {
-            shares = liquidity.mul(totalSupply()).div(totalLiquidity);
+            shares = liquidity.mul(totalSupply()).div(totalLiquidity());
         }
 
         Account storage acc = accounts[account];
@@ -78,32 +82,33 @@ contract NexusSushiSingleEthUSDC is Ownable, ERC20("NexusSushiSingleEthUSDC", "N
         acc.eth = acc.eth.add(amountETH);
         acc.shares = acc.shares.add(shares);
 
-        totalLiquidity = totalLiquidity.add(liquidity);
         _mint(account, shares);
+        if (msg.value > amountETH) {
+            msg.sender.transfer(msg.value.sub(amountETH));
+        }
     }
 
     function withdraw(address payable account, uint256 shares) public onlyGovernance {
         console.log("eth balance", address(this).balance);
         console.log("usd balance", IERC20(USDC).balanceOf(address(this)));
-        console.log("price", ethToUsd(1e18));
+        console.log("price", ethPrice(1e18));
 
         Account storage acc = accounts[account];
         shares = _min(shares, acc.shares);
         require(shares > 0, "0 shares");
 
-        uint256 liquidity = shares.mul(totalLiquidity).div(totalSupply());
+        uint256 liquidity = shares.mul(totalLiquidity()).div(totalSupply());
 
         (uint256 amountToken, uint256 amountETH) = _removeLiquidity(liquidity);
 
         uint256 usdEntry = acc.usd.mul(shares).div(acc.shares);
         uint256 ethEntry = acc.eth.mul(shares).div(acc.shares);
-        (uint256 usdExit, uint256 ethExit) = _applyRebalanceStrategy(amountToken, amountETH, usdEntry, ethEntry);
+        (, uint256 ethExit) = _applyRebalanceStrategy1(amountToken, amountETH, usdEntry, ethEntry);
 
         acc.usd = acc.usd.sub(usdEntry);
         acc.eth = acc.eth.sub(ethEntry);
         acc.shares = acc.shares.sub(shares);
 
-        totalLiquidity = totalLiquidity.sub(liquidity);
         _burn(account, shares);
 
         console.log("eth balance", address(this).balance);
@@ -117,8 +122,7 @@ contract NexusSushiSingleEthUSDC is Ownable, ERC20("NexusSushiSingleEthUSDC", "N
     }
 
     function compoundProfits() external payable onlyGovernance {
-        (, , uint256 liquidity) = _addLiquidity();
-        totalLiquidity = totalLiquidity.add(liquidity);
+        _addLiquidity();
     }
 
     // --- owner actions ---
@@ -141,7 +145,17 @@ contract NexusSushiSingleEthUSDC is Ownable, ERC20("NexusSushiSingleEthUSDC", "N
     }
 
     function emergencyLiquidate() external onlyOwner {
-        // TODO exit position to free all USDC
+        stopped = true;
+        if (totalLiquidity() > 0) {
+            IUniswapV2Router02(SROUTER).removeLiquidityETHSupportingFeeOnTransferTokens(
+                USDC,
+                totalLiquidity(),
+                0,
+                0,
+                address(this),
+                block.timestamp // solhint-disable-line not-rely-on-time
+            );
+        }
         withdrawFreeCapital();
     }
 
@@ -169,13 +183,13 @@ contract NexusSushiSingleEthUSDC is Ownable, ERC20("NexusSushiSingleEthUSDC", "N
             uint256 liquidity
         )
     {
-        uint256 usdcAmount = ethToUsd(msg.value);
-        require(IERC20(USDC).balanceOf(address(this)) >= usdcAmount, "not enough free capital");
+        uint256 usdcAmount = ethPrice(msg.value); // TODO should be quote
+        require(IERC20(USDC).balanceOf(address(this)) >= usdcAmount, "not enough free capital"); // TODO gracefully add or return
 
         (amountToken, amountETH, liquidity) = IUniswapV2Router02(SROUTER).addLiquidityETH{value: msg.value}(
             USDC,
             usdcAmount,
-            0, //TODO minimums?
+            0,
             0,
             address(this),
             block.timestamp // solhint-disable-line not-rely-on-time
@@ -184,27 +198,57 @@ contract NexusSushiSingleEthUSDC is Ownable, ERC20("NexusSushiSingleEthUSDC", "N
     }
 
     function _removeLiquidity(uint256 liquidity) private returns (uint256 amountToken, uint256 amountETH) {
-        amountETH = IUniswapV2Router02(SROUTER).removeLiquidityETHSupportingFeeOnTransferTokens( //in case they decide to add a fee
+        (amountToken, amountETH) = IUniswapV2Router02(SROUTER).removeLiquidityETH(
             USDC,
             liquidity,
-            0, //TODO minimums?
+            0,
             0,
             address(this),
             block.timestamp // solhint-disable-line not-rely-on-time
         );
-        amountToken = ethToUsd(amountETH);
         console.log(amountToken, amountETH, liquidity);
     }
 
-    function _applyRebalanceStrategy(
-        uint256 amountToken,
-        uint256 amountETH,
-        uint256 usdEntry,
-        uint256 ethEntry
-    ) private pure returns (uint256 usdExit, uint256 ethExit) {
-        // TODO
-        usdExit = usdEntry;
-        ethExit = ethEntry;
+    // Rebalance usd and eth such that the eth provider takes all IL risk but receives all excess eth,
+    // while usd provider's principal is protected
+    function _applyRebalanceStrategy1(
+        uint256 amountEth,
+        uint256 amountUsd,
+        uint256 ethEntry, //solhint-disable-line no-unused-vars
+        uint256 usdEntry
+    ) private returns (uint256 ethExit, uint256 usdExit) {
+        if (amountUsd > usdEntry) {
+            uint256 usdDelta = amountUsd.sub(usdEntry);
+            ethExit = amountEth.add(_swapUsdToEth(usdDelta));
+            usdExit = amountUsd.sub(usdDelta);
+        } else {
+            uint256 usdDelta = usdEntry.sub(amountUsd);
+            uint256 ethDelta = _min(amountEth, amountEth.mul(usdDelta).div(amountUsd));
+            usdExit = amountUsd.add(_swapEthToUsd(ethDelta));
+            ethExit = amountEth.sub(ethDelta);
+        }
+    }
+
+    function _swapUsdToEth(uint256 usd) private returns (uint256 eth) {
+        if (usd == 0) return 0;
+
+        address[] memory path = new address[](2);
+        path[0] = USDC;
+        path[1] = WETH;
+        uint256[] memory amounts =
+            IUniswapV2Router02(SROUTER).swapExactTokensForETH(usd, 0, path, address(this), block.timestamp); // solhint-disable-line not-rely-on-time
+        eth = amounts[1];
+    }
+
+    function _swapEthToUsd(uint256 eth) private returns (uint256 usd) {
+        if (eth == 0) return 0;
+
+        address[] memory path = new address[](2);
+        path[0] = WETH;
+        path[1] = USDC;
+        uint256[] memory amounts =
+            IUniswapV2Router02(SROUTER).swapExactETHForTokens{value: eth}(0, path, address(this), block.timestamp); // solhint-disable-line not-rely-on-time
+        usd = amounts[1];
     }
 
     function _min(uint256 a, uint256 b) private pure returns (uint256) {
