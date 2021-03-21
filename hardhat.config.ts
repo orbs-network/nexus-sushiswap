@@ -3,7 +3,7 @@ import "hardhat-typechain";
 import "hardhat-gas-reporter";
 import "@nomiclabs/hardhat-web3";
 import { task } from "hardhat/config";
-import { bscChainId, bscRpcUrls, coinmarketcapKey, ethChainId, ethRpcUrls } from "./src/consts";
+import { alchemyUrl, bscChainId, bscRpcUrls, coinmarketcapKey, ethChainId, ethRpcUrls } from "./src/consts";
 import { random } from "./src/utils";
 
 task("start", "").setAction(async () => {});
@@ -22,7 +22,8 @@ const config: HardhatUserConfig = {
   networks: {
     hardhat: {
       forking: {
-        url: random(ethRpcUrls),
+        blockNumber: 12080000,
+        url: alchemyUrl,
       },
       blockGasLimit: 12e6,
     },
