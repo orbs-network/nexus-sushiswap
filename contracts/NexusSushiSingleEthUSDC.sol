@@ -8,6 +8,7 @@ import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "./ISushiswapRouter.sol";
 import "hardhat/console.sol";
 
+// The LiquidityNexus Auto Rebalancing Contract
 contract NexusSushiSingleEthUSDC is Ownable, ERC20("NexusSushiSingleEthUSDC", "NexusSushiSingleEthUSDC") {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
@@ -97,7 +98,6 @@ contract NexusSushiSingleEthUSDC is Ownable, ERC20("NexusSushiSingleEthUSDC", "N
         uint256 usdEntry = acc.usd.mul(shares).div(acc.shares);
         uint256 ethEntry = acc.eth.mul(shares).div(acc.shares);
         (uint256 usdExit, uint256 ethExit) = _applyRebalanceStrategy(amountToken, amountETH, usdEntry, ethEntry);
-        require(ethExit <= ethEntry, "ethExit > ethEntry");
 
         acc.usd = acc.usd.sub(usdEntry);
         acc.eth = acc.eth.sub(ethEntry);
@@ -114,6 +114,11 @@ contract NexusSushiSingleEthUSDC is Ownable, ERC20("NexusSushiSingleEthUSDC", "N
 
     function withdrawAll(address payable account) external onlyGovernance {
         withdraw(account, balanceOf(account));
+    }
+
+    function compoundProfits() external payable onlyGovernance {
+        (, , uint256 liquidity) = _addLiquidity();
+        totalLiquidity = totalLiquidity.add(liquidity);
     }
 
     // --- owner actions ---

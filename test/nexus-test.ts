@@ -15,7 +15,7 @@ describe("LiquidityNexus with SushiSwap single sided ETH/USDC", () => {
     //TODO
   });
 
-  it.only("user as governance, 100% share, deposit & withdraw", async () => {
+  it("user as governance, 100% share, deposit & withdraw", async () => {
     const deployer = await Wallet.fake();
     deployer.setAsDefaultSigner();
     const nexus = await deployContract<NexusSushiSingleEthUSDC>("NexusSushiSingleEthUSDC", deployer.address);
