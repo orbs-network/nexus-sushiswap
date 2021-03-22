@@ -5,7 +5,7 @@
     "type": "git",
     "url": "git+https://github.com/defi-org-code/nexus.git"
   },
-  "author": "danielz@orbs.com",
+  "author": "Orbs",
   "license": "MIT",
   "dependencies": {
     "@openzeppelin/contracts": "^3.4.0",
@@ -43,7 +43,6 @@
     "typechain": "typechain --target=web3-v1 --outDir=typechain-abi 'abi/**/*.json' && npx hardhat typechain",
     "prebuild": "npm run prettier && npm run typechain",
     "build": "npx hardhat compile && npx solhint 'contracts/**/*.sol'",
-    "pretest": "npm run build",
     "test": "npx hardhat test"
   },
   "config": {

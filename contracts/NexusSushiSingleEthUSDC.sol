@@ -8,7 +8,9 @@ import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "./ISushiswapRouter.sol";
 import "hardhat/console.sol";
 
-// The LiquidityNexus Auto Rebalancing Contract
+/**
+ * The LiquidityNexus Auto Rebalancing Contract
+ */
 contract NexusSushiSingleEthUSDC is Ownable, ERC20("NexusSushiSingleEthUSDC", "NexusSushiSingleEthUSDC") {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
@@ -49,6 +51,7 @@ contract NexusSushiSingleEthUSDC is Ownable, ERC20("NexusSushiSingleEthUSDC", "N
         return IERC20(SLP).balanceOf(address(this));
     }
 
+    // returns price in USD
     function ethPrice(uint256 ethAmount) public view returns (uint256 usdAmount) {
         address[] memory path = new address[](2);
         path[0] = WETH;
@@ -122,6 +125,7 @@ contract NexusSushiSingleEthUSDC is Ownable, ERC20("NexusSushiSingleEthUSDC", "N
     }
 
     function compoundProfits() external payable onlyGovernance {
+        // TODO swap 50% to USDC
         _addLiquidity();
     }
 
@@ -134,20 +138,20 @@ contract NexusSushiSingleEthUSDC is Ownable, ERC20("NexusSushiSingleEthUSDC", "N
     }
 
     function depositAllCapital() external onlyOwner {
-        depositCapital(IERC20(USDC).balanceOf(owner()));
+        depositCapital(IERC20(USDC).balanceOf(msg.sender));
     }
 
     function withdrawFreeCapital() public onlyOwner {
         uint256 balance = IERC20(USDC).balanceOf(address(this));
         if (balance > 0) {
-            IERC20(USDC).safeTransfer(owner(), balance);
+            IERC20(USDC).safeTransfer(msg.sender, balance);
         }
     }
 
     function emergencyLiquidate() external onlyOwner {
         stopped = true;
         if (totalLiquidity() > 0) {
-            IUniswapV2Router02(SROUTER).removeLiquidityETHSupportingFeeOnTransferTokens(
+            IUniswapV2Router02(SROUTER).removeLiquidityETHSupportingFeeOnTransferTokens( // in case of future fees
                 USDC,
                 totalLiquidity(),
                 0,
@@ -159,7 +163,9 @@ contract NexusSushiSingleEthUSDC is Ownable, ERC20("NexusSushiSingleEthUSDC", "N
         withdrawFreeCapital();
     }
 
-    // withdraw all non-invested assets
+    /**
+     * withdraw all non-investable assets
+     */
     function rescueAssets(address[] memory tokens_) external onlyOwner {
         uint256 ercLen = tokens_.length;
         for (uint256 i = 0; i < ercLen; i++) {
@@ -183,7 +189,7 @@ contract NexusSushiSingleEthUSDC is Ownable, ERC20("NexusSushiSingleEthUSDC", "N
             uint256 liquidity
         )
     {
-        uint256 usdcAmount = ethPrice(msg.value); // TODO should be quote
+        uint256 usdcAmount = ethPrice(msg.value); // TODO should this be quote (without the fee)?
         require(IERC20(USDC).balanceOf(address(this)) >= usdcAmount, "not enough free capital"); // TODO gracefully add or return
 
         (amountToken, amountETH, liquidity) = IUniswapV2Router02(SROUTER).addLiquidityETH{value: msg.value}(
@@ -209,24 +215,65 @@ contract NexusSushiSingleEthUSDC is Ownable, ERC20("NexusSushiSingleEthUSDC", "N
         console.log(amountToken, amountETH, liquidity);
     }
 
-    // Rebalance usd and eth such that the eth provider takes all IL risk but receives all excess eth,
-    // while usd provider's principal is protected
+    /**
+     * Rebalance usd and eth such that the eth provider takes all IL risk but receives all excess eth,
+     * while usd provider's principal is protected
+     */
     function _applyRebalanceStrategy1(
         uint256 amountEth,
         uint256 amountUsd,
-        uint256 ethEntry, //solhint-disable-line no-unused-vars
+        uint256 ethEntry, // solhint-disable-line no-unused-vars
         uint256 usdEntry
     ) private returns (uint256 ethExit, uint256 usdExit) {
         if (amountUsd > usdEntry) {
             uint256 usdDelta = amountUsd.sub(usdEntry);
             ethExit = amountEth.add(_swapUsdToEth(usdDelta));
-            usdExit = amountUsd.sub(usdDelta);
+            usdExit = usdEntry;
         } else {
             uint256 usdDelta = usdEntry.sub(amountUsd);
             uint256 ethDelta = _min(amountEth, amountEth.mul(usdDelta).div(amountUsd));
             usdExit = amountUsd.add(_swapEthToUsd(ethDelta));
             ethExit = amountEth.sub(ethDelta);
         }
+    }
+
+    /**
+     * Rebalance usd and eth such that any excess eth is swapped to usd and any excess usd is swapped to eth,
+     * preferring first to compensate eth provider while maintaining usd provider initial principal
+     */
+    function _applyRebalanceStrategy2(
+        uint256 amountEth,
+        uint256 amountUsd,
+        uint256 ethEntry,
+        uint256 usdEntry
+    ) private returns (uint256 ethExit, uint256 usdExit) {
+        if (amountUsd > usdEntry) {
+            uint256 usdDelta = amountUsd.sub(usdEntry);
+            ethExit = amountEth.add(_swapUsdToEth(usdDelta));
+            usdExit = usdEntry;
+        } else {
+            uint256 ethDelta = amountEth.sub(ethEntry); // TODO underflow?
+            usdExit = amountUsd.add(_swapEthToUsd(ethDelta));
+            ethExit = ethEntry;
+        }
+    }
+
+    /**
+     * Rebalance usd and eth such that all IL is shared equally between eth and usd
+     */
+    function _applyRebalanceStrategy3(
+        uint256 amountEth,
+        uint256 amountUsd,
+        uint256 ethEntry,
+        uint256 usdEntry
+    ) private view returns (uint256 ethExit, uint256 usdExit) {
+        uint256 price = ethPrice(1e18);
+        uint256 amountEthInUsd = amountEth.mul(price);
+        uint256 ethEntryInUsd = ethEntry.mul(price);
+        uint256 num = ethEntry.mul(amountUsd.add(amountEthInUsd));
+        uint256 denom = usdEntry.add(ethEntryInUsd);
+        ethExit = num.div(denom);
+        usdExit = amountUsd.add(amountEthInUsd).sub(ethExit.mul(price));
     }
 
     function _swapUsdToEth(uint256 usd) private returns (uint256 eth) {
