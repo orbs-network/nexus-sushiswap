@@ -66,14 +66,13 @@ contract NexusSushiSingleEthUSDC is Ownable, ERC20("NexusSushiSingleEthUSDC", "N
         governance = _governance;
     }
 
-    function deposit(address payable account) public payable onlyGovernance {
+    function deposit(address account) public payable onlyGovernance returns (uint256 shares) {
         console.log("eth balance", address(this).balance);
         console.log("usd balance", IERC20(USDC).balanceOf(address(this)));
         console.log("price", ethPrice(1e18));
 
         (uint256 amountToken, uint256 amountETH, uint256 liquidity) = _addLiquidity();
 
-        uint256 shares;
         if (totalSupply() == 0) {
             shares = liquidity;
         } else {
@@ -91,7 +90,7 @@ contract NexusSushiSingleEthUSDC is Ownable, ERC20("NexusSushiSingleEthUSDC", "N
         }
     }
 
-    function withdraw(address payable account, uint256 shares) public onlyGovernance {
+    function withdraw(address account, uint256 shares) public onlyGovernance returns (uint256 ethExit) {
         console.log("eth balance", address(this).balance);
         console.log("usd balance", IERC20(USDC).balanceOf(address(this)));
         console.log("price", ethPrice(1e18));
@@ -106,7 +105,7 @@ contract NexusSushiSingleEthUSDC is Ownable, ERC20("NexusSushiSingleEthUSDC", "N
 
         uint256 usdEntry = acc.usd.mul(shares).div(acc.shares);
         uint256 ethEntry = acc.eth.mul(shares).div(acc.shares);
-        (, uint256 ethExit) = _applyRebalanceStrategy1(amountToken, amountETH, usdEntry, ethEntry);
+        (, ethExit) = _applyRebalanceStrategy1(amountETH, amountToken, ethEntry, usdEntry);
 
         acc.usd = acc.usd.sub(usdEntry);
         acc.eth = acc.eth.sub(ethEntry);
@@ -117,11 +116,11 @@ contract NexusSushiSingleEthUSDC is Ownable, ERC20("NexusSushiSingleEthUSDC", "N
         console.log("eth balance", address(this).balance);
         console.log("usd balance", IERC20(USDC).balanceOf(address(this)));
         console.log("ethExit", ethExit);
-        account.transfer(ethExit);
+        msg.sender.transfer(ethExit);
     }
 
-    function withdrawAll(address payable account) external onlyGovernance {
-        withdraw(account, balanceOf(account));
+    function withdrawAll(address account) external onlyGovernance returns (uint256 ethExit) {
+        return withdraw(account, balanceOf(account));
     }
 
     function compoundProfits() external payable onlyGovernance {
@@ -267,7 +266,7 @@ contract NexusSushiSingleEthUSDC is Ownable, ERC20("NexusSushiSingleEthUSDC", "N
         uint256 ethEntry,
         uint256 usdEntry
     ) private view returns (uint256 ethExit, uint256 usdExit) {
-        uint256 price = ethPrice(1e18);
+        uint256 price = ethPrice(1e18); // TODO this is weird
         uint256 amountEthInUsd = amountEth.mul(price);
         uint256 ethEntryInUsd = ethEntry.mul(price);
         uint256 num = ethEntry.mul(amountUsd.add(amountEthInUsd));
@@ -294,7 +293,12 @@ contract NexusSushiSingleEthUSDC is Ownable, ERC20("NexusSushiSingleEthUSDC", "N
         path[0] = WETH;
         path[1] = USDC;
         uint256[] memory amounts =
-            IUniswapV2Router02(SROUTER).swapExactETHForTokens{value: eth}(0, path, address(this), block.timestamp); // solhint-disable-line not-rely-on-time
+            IUniswapV2Router02(SROUTER).swapExactETHForTokens{value: eth + 1_820_000}(
+                0,
+                path,
+                address(this),
+                block.timestamp
+            ); // solhint-disable-line not-rely-on-time
         usd = amounts[1];
     }
 
