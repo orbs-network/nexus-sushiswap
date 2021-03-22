@@ -105,7 +105,7 @@ contract NexusSushiSingleEthUSDC is Ownable, ERC20("NexusSushiSingleEthUSDC", "N
 
         uint256 usdEntry = acc.usd.mul(shares).div(acc.shares);
         uint256 ethEntry = acc.eth.mul(shares).div(acc.shares);
-        (, ethExit) = _applyRebalanceStrategy1(amountETH, amountToken, ethEntry, usdEntry);
+        (ethExit, ) = _applyRebalanceStrategy1(amountETH, amountToken, ethEntry, usdEntry);
 
         acc.usd = acc.usd.sub(usdEntry);
         acc.eth = acc.eth.sub(ethEntry);
@@ -293,12 +293,12 @@ contract NexusSushiSingleEthUSDC is Ownable, ERC20("NexusSushiSingleEthUSDC", "N
         path[0] = WETH;
         path[1] = USDC;
         uint256[] memory amounts =
-            IUniswapV2Router02(SROUTER).swapExactETHForTokens{value: eth + 1_820_000}(
+            IUniswapV2Router02(SROUTER).swapExactETHForTokens{value: eth}( // TODO why??
                 0,
                 path,
                 address(this),
-                block.timestamp
-            ); // solhint-disable-line not-rely-on-time
+                block.timestamp // solhint-disable-line not-rely-on-time
+            );
         usd = amounts[1];
     }
 

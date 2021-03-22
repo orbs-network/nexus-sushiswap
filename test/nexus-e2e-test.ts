@@ -54,7 +54,7 @@ describe("LiquidityNexus with SushiSwap single sided ETH/USDC e2e", () => {
     expect(await usdcBalance(deployer.address)).not.bignumber.zero;
   });
 
-  it.only("user is governor, 100% share, deposit & withdraw", async () => {
+  it("user is governor, 100% share, deposit & withdraw", async () => {
     const user = await Wallet.fake(1);
     const startBalance = await user.getBalance();
 
