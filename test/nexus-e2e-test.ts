@@ -83,7 +83,7 @@ describe("LiquidityNexus with SushiSwap single sided ETH/USDC e2e", () => {
     expect(await usdcBalance()).bignumber.closeTo(startNexusUsdBalance, bn6("1"));
   });
 
-  it("2 deposits, equal shares", async () => {
+  it("gov deposit for 2 accounts", async () => {
     const user1 = Wallet.random().address;
     const user2 = Wallet.random().address;
     await nexus.methods.deposit(user1).send({ value: bn18("10") });
@@ -130,10 +130,11 @@ describe("LiquidityNexus with SushiSwap single sided ETH/USDC e2e", () => {
   }
 
   async function ethBalance(address: string = nexus.options.address) {
-    const [b1, b2] = await Promise.all([
-      web3().eth.getBalance(address),
-      Tokens.eth.WETH().methods.balanceOf(address).call(),
-    ]);
-    return bn(b1).add(bn(b2));
+    // const [b1, b2] = await Promise.all([
+    //   web3().eth.getBalance(address),
+    //   Tokens.eth.WETH().methods.balanceOf(address).call(),
+    // ]);
+    // return bn(b1).add(bn(b2));
+    return bn(await web3().eth.getBalance(address));
   }
 });
