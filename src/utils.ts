@@ -49,13 +49,6 @@ export function sort(a: BN, b: BN) {
   return a.lt(b) ? -1 : a.eq(b) ? 0 : 1;
 }
 
-/**
- * @returns percentmil from percent (0.1% => 100, 12.345% => 12345)
- */
-export function pcm(percent: number) {
-  return percent * 1000;
-}
-
 export function random<T>(ts: T[]): T {
   return ts[_.random(0, ts.length - 1)];
 }

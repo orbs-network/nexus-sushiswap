@@ -6,21 +6,32 @@ import { bn, bn18, bn6, ether, many } from "../src/utils";
 import { IUniswapV2Router02 } from "../typechain-hardhat/IUniswapV2Router02";
 import { NexusSushiSingleEthUSDC } from "../typechain-hardhat/NexusSushiSingleEthUSDC";
 import { expectRevert } from "./test-utils";
-import { web3 } from "../src/network";
+import { impersonate, web3 } from "../src/network";
 import BN from "bn.js";
+import { IUniswapV2Pair } from "../typechain-hardhat/IUniswapV2Pair";
 
 describe("LiquidityNexus with SushiSwap single sided ETH/USDC e2e", () => {
   let deployer: Wallet;
   let nexus: NexusSushiSingleEthUSDC;
-  let startBalance: BN;
+  let startDeployerEthBalance: BN;
   let startNexusUsdBalance: BN;
+  let sushiRouter: IUniswapV2Router02;
+  let sushiPair: IUniswapV2Pair;
 
   beforeEach(async () => {
     deployer = await Wallet.fake();
     deployer.setAsDefaultSigner();
     nexus = await deployContract<NexusSushiSingleEthUSDC>("NexusSushiSingleEthUSDC", deployer.address);
+    sushiRouter = contract<IUniswapV2Router02>(
+      require("../artifacts/contracts/ISushiswapRouter.sol/IUniswapV2Router02.json").abi,
+      await nexus.methods.SROUTER().call()
+    );
+    sushiPair = contract<IUniswapV2Pair>(
+      require("../artifacts/contracts/ISushiswapRouter.sol/IUniswapV2Pair.json").abi,
+      await nexus.methods.SLP().call()
+    );
     await supplyCapital();
-    [startBalance, startNexusUsdBalance] = await Promise.all([deployer.getBalance(), usdcBalance()]);
+    [startDeployerEthBalance, startNexusUsdBalance] = await Promise.all([deployer.getBalance(), usdcBalance()]);
   });
 
   describe("sanity", () => {
@@ -73,14 +84,14 @@ describe("LiquidityNexus with SushiSwap single sided ETH/USDC e2e", () => {
     await nexus.methods.withdrawAll(user.address).send({ from: user.address });
     expect(await user.getBalance()).bignumber.closeTo(startBalance, bn18("0.1"));
 
-    expect(await nexus.methods.totalSupply().call()).bignumber.zero;
+    expect(await nexus.methods.totalSupply().call()).eq(await nexus.methods.totalLiquidity().call()).bignumber.zero;
     account = await nexus.methods.accounts(user.address).call();
     expect(account.eth).bignumber.zero;
     expect(account.usd).bignumber.zero;
     expect(account.shares).bignumber.zero;
 
     expect(await ethBalance()).bignumber.zero;
-    expect(await usdcBalance()).bignumber.closeTo(startNexusUsdBalance, bn6("1"));
+    expect(await usdcBalance()).bignumber.eq(startNexusUsdBalance);
   });
 
   it("gov deposit for 2 accounts", async () => {
@@ -88,11 +99,8 @@ describe("LiquidityNexus with SushiSwap single sided ETH/USDC e2e", () => {
     const user2 = Wallet.random().address;
     await nexus.methods.deposit(user1).send({ value: bn18("10") });
     await nexus.methods.deposit(user2).send({ value: bn18("20") });
-    const e1 = bn(await nexus.methods.withdrawAll(user1).call());
-    const e2 = bn(await nexus.methods.withdrawAll(user2).call());
-
-    expect(e1).bignumber.closeTo(bn18("10"), ether);
-    expect(e2).bignumber.closeTo(bn18("20"), ether);
+    expect(await nexus.methods.withdrawAll(user1).call()).bignumber.closeTo(bn18("10"), ether);
+    expect(await nexus.methods.withdrawAll(user2).call()).bignumber.closeTo(bn18("20"), ether);
   });
 
   it("gracefully handle invalid input shares", async () => {
@@ -102,10 +110,31 @@ describe("LiquidityNexus with SushiSwap single sided ETH/USDC e2e", () => {
     const shares = bn((await nexus.methods.accounts(user1).call()).shares);
     await nexus.methods.withdraw(user1, shares.muln(10)).send();
 
-    expect(await deployer.getBalance()).bignumber.closeTo(startBalance, ether);
-    expect(await usdcBalance()).bignumber.closeTo(startNexusUsdBalance, bn6("1"));
+    expect(await deployer.getBalance()).bignumber.closeTo(startDeployerEthBalance, ether);
+    expect(await usdcBalance()).bignumber.eq(startNexusUsdBalance);
   });
 
+  describe("rebalance usd/eth such that eth provider takes all IL risk but receives all excess eth", () => {
+    it.only("whale -> price increase -> fish -> whale exit -> fish exit", async () => {
+      const whale = deployer;
+      const fishy = await Wallet.fake(1);
+      const price = await ethPrice();
+
+      await nexus.methods.deposit(whale.address).send({ value: bn18("100") });
+      expect(await usdcBalance()).bignumber.closeTo(startNexusUsdBalance.sub(price.muln(100)), bn6("1"));
+
+      await increaseEthPrice(25);
+
+      await nexus.methods.deposit(fishy.address).send({ value: bn18("1") });
+      expect(await usdcBalance()).bignumber.closeTo(
+        startNexusUsdBalance.sub(price.muln(100)).sub(price.muln(125).divn(100)),
+        bn6("10")
+      );
+
+      // original eth after price shift without rebalancing is 89.44
+      expect(await nexus.methods.withdrawAll(whale.address).call()).bignumber.closeTo(bn18("98.89"), bn18("0.1"));
+    });
+  });
   async function supplyCapital() {
     await buyUSDCIfNeeded();
     await Tokens.eth.USDC().methods.approve(nexus.options.address, many).send();
@@ -116,11 +145,7 @@ describe("LiquidityNexus with SushiSwap single sided ETH/USDC e2e", () => {
     if ((await usdcBalance(deployer.address)).gte(bn6("100,000"))) {
       return;
     }
-    const router = contract<IUniswapV2Router02>(
-      require("../artifacts/contracts/ISushiswapRouter.sol/IUniswapV2Router02.json").abi,
-      "0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F"
-    );
-    await router.methods
+    await sushiRouter.methods
       .swapExactETHForTokens(0, [Tokens.eth.WETH().address, Tokens.eth.USDC().address], deployer.address, many)
       .send({ value: (await deployer.getBalance()).divn(2) });
   }
@@ -130,11 +155,38 @@ describe("LiquidityNexus with SushiSwap single sided ETH/USDC e2e", () => {
   }
 
   async function ethBalance(address: string = nexus.options.address) {
-    // const [b1, b2] = await Promise.all([
-    //   web3().eth.getBalance(address),
-    //   Tokens.eth.WETH().methods.balanceOf(address).call(),
-    // ]);
-    // return bn(b1).add(bn(b2));
     return bn(await web3().eth.getBalance(address));
+  }
+
+  async function ethPrice() {
+    return bn(await nexus.methods.ethToUsd(ether).call());
+  }
+
+  async function increaseEthPrice(percent: number) {
+    console.log("increasing ETH price by", percent, "percent");
+
+    let price = await ethPrice();
+    console.log("price before", price.toString(10));
+
+    const targetPrice = price.muln((1 + percent / 100) * 1000).divn(1000);
+
+    const path = [Tokens.eth.USDC().address, Tokens.eth.WETH().address];
+    const { reserve0, reserve1 } = await sushiPair.methods.getReserves().call();
+    const rUsd = bn(reserve0).divn(1e6).toNumber();
+    const rEth = bn(reserve1).div(ether).toNumber();
+    const p = targetPrice.divn(1e6).toNumber();
+    const t = Math.sqrt(p * rEth * rUsd);
+    const usdAmountToSell = bn((t - rUsd) * 1e6);
+
+    const usdcHolder = "0xBE0eB53F46cd790Cd13851d5EFf43D12404d33E8";
+    await impersonate(usdcHolder);
+
+    await Tokens.eth.USDC().methods.approve(sushiRouter.options.address, many).send({ from: usdcHolder });
+    await sushiRouter.methods
+      .swapExactTokensForETH(usdAmountToSell, 0, path, usdcHolder, many)
+      .send({ from: usdcHolder });
+
+    price = await ethPrice();
+    console.log("price after", price.toString(10));
   }
 });

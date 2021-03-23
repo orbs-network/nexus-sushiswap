@@ -10,7 +10,7 @@ import "./RebalancingStrategy1.sol";
 /**
  * The LiquidityNexus Auto Rebalancing Contract
  */
-contract NexusSushiSingleEthUSDC is RebalancingStrategy1, ERC20("NexusSushiSingleEthUSDC", "NexusSushiSingleEthUSDC") {
+contract NexusSushiSingleEthUSDC is ERC20("NexusSushiSingleEthUSDC", "NexusSushiSingleEthUSDC"), RebalancingStrategy1 {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 

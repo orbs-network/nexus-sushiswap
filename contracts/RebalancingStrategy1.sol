@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.7.6;
 
-import "hardhat/console.sol";
 import "./SushiSwapIntegration.sol";
 
 contract RebalancingStrategy1 is SushiSwapIntegration {
@@ -24,11 +23,7 @@ contract RebalancingStrategy1 is SushiSwapIntegration {
             usdExit = usdEntry;
         } else {
             uint256 usdDelta = usdEntry.sub(amountUsd);
-            uint256 ethNeeded = ethAmountInForUsd(usdDelta);
-            uint256 ethDelta = min(amountEth, ethNeeded);
-            console.log("debugging is hell");
-            console.log(ethDelta, usdDelta, address(this).balance, IERC20(USDC).balanceOf(address(this)));
-            console.log(amountEth, amountUsd, ethEntry, usdEntry);
+            uint256 ethDelta = min(amountEth, ethAmountInForRequestedUsd(usdDelta));
             usdExit = amountUsd.add(swapEthToUsd(ethDelta));
             ethExit = amountEth.sub(ethDelta);
         }

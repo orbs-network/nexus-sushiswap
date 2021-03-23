@@ -30,7 +30,7 @@ contract SushiSwapIntegration is LiquidityNexusBase {
     /**
      * returns eth amount (in) needed when swapping for requested usd amount (out)
      */
-    function ethAmountInForUsd(uint256 usd) public view returns (uint256 eth) {
+    function ethAmountInForRequestedUsd(uint256 usd) public view returns (uint256 eth) {
         eth = IUniswapV2Router02(SROUTER).getAmountsIn(usd, pathEthToUsd)[0];
     }
 
@@ -63,7 +63,7 @@ contract SushiSwapIntegration is LiquidityNexusBase {
             uint256 liquidity
         )
     {
-        uint256 usdcAmount = ethToUsd(msg.value); // TODO should this be quote (without the fee)?
+        uint256 usdcAmount = ethToUsd(msg.value);
         require(IERC20(USDC).balanceOf(address(this)) >= usdcAmount, "not enough free capital"); // TODO gracefully add or return
 
         (amountToken, amountETH, liquidity) = IUniswapV2Router02(SROUTER).addLiquidityETH{value: msg.value}(
