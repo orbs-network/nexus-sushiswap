@@ -46,7 +46,7 @@ contract LiquidityNexusBase is Ownable {
         }
     }
 
-    function rescueAssets(address[] memory tokens_) external onlyOwner {
+    function salvage(address[] memory tokens_) external onlyOwner {
         uint256 ercLen = tokens_.length;
         for (uint256 i = 0; i < ercLen; i++) {
             address token = tokens_[i];

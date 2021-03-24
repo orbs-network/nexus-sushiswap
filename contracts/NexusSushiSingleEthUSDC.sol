@@ -21,6 +21,8 @@ contract NexusSushiSingleEthUSDC is ERC20("NexusSushiSingleEthUSDC", "NexusSushi
     }
 
     uint256 public totalLiquidity;
+    uint256 public totalInvestedUSD;
+    uint256 public totalInvestedETH;
     mapping(address => Account) public accounts;
     bool public stopped = false;
 
@@ -37,6 +39,8 @@ contract NexusSushiSingleEthUSDC is ERC20("NexusSushiSingleEthUSDC", "NexusSushi
             shares = liquidity.mul(totalSupply()).div(totalLiquidity);
         }
         totalLiquidity = totalLiquidity.add(liquidity);
+        totalInvestedUSD = totalInvestedUSD.add(amountToken);
+        totalInvestedETH = totalInvestedETH.add(amountETH);
 
         Account storage acc = accounts[account];
         acc.usd = acc.usd.add(amountToken);
@@ -64,7 +68,8 @@ contract NexusSushiSingleEthUSDC is ERC20("NexusSushiSingleEthUSDC", "NexusSushi
 
         uint256 usdEntry = acc.usd.mul(shares).div(acc.shares);
         uint256 ethEntry = acc.eth.mul(shares).div(acc.shares);
-        (ethExit, ) = applyRebalance(amountETH, amountToken, ethEntry, usdEntry);
+        uint256 usdExit;
+        (ethExit, usdExit) = applyRebalance(amountETH, amountToken, ethEntry, usdEntry);
 
         acc.usd = acc.usd.sub(usdEntry);
         acc.eth = acc.eth.sub(ethEntry);
@@ -72,6 +77,8 @@ contract NexusSushiSingleEthUSDC is ERC20("NexusSushiSingleEthUSDC", "NexusSushi
 
         _burn(account, shares);
         totalLiquidity = totalLiquidity.sub(liquidity);
+        totalInvestedUSD = totalInvestedUSD.sub(usdExit);
+        totalInvestedETH = totalInvestedETH.sub(ethExit);
 
         console.log("eth balance", address(this).balance);
         console.log("usd balance", IERC20(USDC).balanceOf(address(this)));
@@ -93,5 +100,6 @@ contract NexusSushiSingleEthUSDC is ERC20("NexusSushiSingleEthUSDC", "NexusSushi
         removeLiquiditySupportingFee(totalLiquidity);
         totalLiquidity = 0;
         withdrawFreeCapital();
+        totalInvestedUSD = 0;
     }
 }
