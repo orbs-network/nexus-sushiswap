@@ -2,6 +2,8 @@
 
 ### Background
 
+* https://www.orbs.com/introducing-orbs-liquidity-nexus-liquidity-as-a-service/
+
 ### Running locally
 
 - `npm install`

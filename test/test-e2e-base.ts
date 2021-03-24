@@ -1,18 +1,14 @@
 import BN from "bn.js";
-import { bn, bn6, ether, many } from "../src/utils";
+import { bn, bn18, bn6, ether, many } from "../src/utils";
 import { IUniswapV2Pair } from "../typechain-hardhat/IUniswapV2Pair";
 import { contract, deployContract } from "../src/extensions";
-import { impersonate, web3 } from "../src/network";
+import { impersonate, resetFakeNetworkFork, web3 } from "../src/network";
 import { Tokens } from "../src/impl/token";
 import { IUniswapV2Router02 } from "../typechain-hardhat/IUniswapV2Router02";
 import { Wallet } from "../src/impl/wallet";
 import { NexusSushiSingleEthUSDC } from "../typechain-hardhat/NexusSushiSingleEthUSDC";
 
 const usdcWhale = "0xBE0eB53F46cd790Cd13851d5EFf43D12404d33E8"; // binance7
-
-before(async () => {
-  await impersonate(usdcWhale);
-});
 
 export let deployer: string;
 export let nexus: NexusSushiSingleEthUSDC;
@@ -24,6 +20,8 @@ export let startPrice: BN;
  * test case state init
  */
 beforeEach(async () => {
+  await resetFakeNetworkFork();
+  await impersonate(usdcWhale);
   const wallet = await Wallet.fake();
   wallet.setAsDefaultSigner();
   deployer = wallet.address;
@@ -63,33 +61,34 @@ export async function totalInvestedUSD() {
 }
 
 /**
- * Dumps USDC into the pool from whale until eth price is at target usdc percent increase from current price
+ * Changes eth price in pool by dumping USDC or ETH from a whale
  *
- * @param percent number
+ * @param percent number (- or +)
  * @returns the new eth price in usd
  */
-export async function increaseEthPrice(percent: number) {
-  console.log("increasing ETH price by", percent, "percent");
+export async function changeEthPrice(percent: number) {
+  console.log("changing ETH price by", percent, "percent");
 
   let price = await ethPrice();
   console.log("price before", price.toString(10));
 
   const targetPrice = price.muln((1 + percent / 100) * 1000).divn(1000);
-  const usdAmountToSell = await computeUsdToSellForTargetPrice(targetPrice);
-  await whaleUsdDump(usdAmountToSell);
+  const usdDelta = await computeUsdDeltaForTargetPrice(targetPrice);
+
+  if (targetPrice.gt(price)) {
+    await Tokens.eth.USDC().methods.approve(sushiRouter.options.address, many).send({ from: usdcWhale });
+    await sushiRouter.methods
+      .swapExactTokensForETH(usdDelta, 0, [Tokens.eth.USDC().address, Tokens.eth.WETH().address], usdcWhale, many)
+      .send({ from: usdcWhale });
+  } else {
+    await sushiRouter.methods
+      .swapETHForExactTokens(usdDelta, [Tokens.eth.WETH().address, Tokens.eth.USDC().address], usdcWhale, many)
+      .send({ from: usdcWhale, value: (await ethBalance(usdcWhale)).sub(bn18("1")) });
+  }
 
   price = await ethPrice();
   console.log("price after", price.toString(10));
   return price;
-}
-
-/**
- * Takes USDC from whale ensuring minimum amount
- */
-export async function ensureUsdBalance(address: string, amount: BN) {
-  if ((await usdcBalance(address)).lt(amount)) {
-    await Tokens.eth.USDC().methods.transfer(address, amount).send({ from: usdcWhale });
-  }
 }
 
 export const sushiRouter = contract<IUniswapV2Router02>(
@@ -108,18 +107,20 @@ async function supplyCapitalAsDeployer(amount: BN) {
   await nexus.methods.depositAllCapital().send();
 }
 
-async function computeUsdToSellForTargetPrice(targetPrice: BN) {
+/**
+ * Takes USDC from whale ensuring minimum amount
+ */
+async function ensureUsdBalance(address: string, amount: BN) {
+  if ((await usdcBalance(address)).lt(amount)) {
+    await Tokens.eth.USDC().methods.transfer(address, amount).send({ from: usdcWhale });
+  }
+}
+
+async function computeUsdDeltaForTargetPrice(targetPrice: BN) {
   const { reserve0, reserve1 } = await sushiEthUsdPair.methods.getReserves().call();
   const rUsd = bn(reserve0).divn(1e6).toNumber();
   const rEth = bn(reserve1).div(ether).toNumber();
   const nTargetPrice = targetPrice.divn(1e6).toNumber();
   const targetUsdReserve = Math.sqrt(nTargetPrice * rEth * rUsd);
-  return bn((targetUsdReserve - rUsd) * 1e6);
-}
-
-async function whaleUsdDump(usdAmountToSell: BN) {
-  await Tokens.eth.USDC().methods.approve(sushiRouter.options.address, many).send({ from: usdcWhale });
-  await sushiRouter.methods
-    .swapExactTokensForETH(usdAmountToSell, 0, [Tokens.eth.USDC().address, Tokens.eth.WETH().address], usdcWhale, many)
-    .send({ from: usdcWhale });
+  return bn(Math.abs(targetUsdReserve - rUsd) * 1e6);
 }

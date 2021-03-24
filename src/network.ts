@@ -44,8 +44,7 @@ export async function impersonate(address: string) {
   await network().provider.send("hardhat_impersonateAccount", [address]);
 }
 
-export async function resetFakeNetworkFork(blockNumber?: number) {
-  console.log("was block", await block());
+export async function resetFakeNetworkFork(blockNumber: number = forkingBlockNumber()) {
   await network().provider.send("hardhat_reset", [
     {
       forking: {
@@ -54,7 +53,7 @@ export async function resetFakeNetworkFork(blockNumber?: number) {
       },
     },
   ]);
-  console.log("now block", await block());
+  console.log("block", await block());
 }
 
 export function onFakeNetwork() {
@@ -67,6 +66,10 @@ export function onBinanceSmartChain() {
 
 export function onEthereum() {
   return network().name == "eth" || network().config.chainId == ethChainId || ethRpcUrls.includes(forkingUrl());
+}
+
+function forkingBlockNumber() {
+  return _.get(network().config, "forking.blockNumber");
 }
 
 function forkingUrl() {

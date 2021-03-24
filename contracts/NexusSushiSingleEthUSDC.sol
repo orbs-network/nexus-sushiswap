@@ -24,9 +24,15 @@ contract NexusSushiSingleEthUSDC is ERC20("NexusSushiSingleEthUSDC", "NexusSushi
     uint256 public totalInvestedUSD;
     uint256 public totalInvestedETH;
     mapping(address => Account) public accounts;
-    bool public stopped = false;
 
-    function deposit(address account) public payable onlyGovernance returns (uint256 shares) {
+    function deposit(address account)
+        public
+        payable
+        onlyGovernance
+        nonReentrant
+        whenNotPaused
+        returns (uint256 shares)
+    {
         console.log("eth balance", address(this).balance);
         console.log("usd balance", IERC20(USDC).balanceOf(address(this)));
         console.log("price", ethToUsd(1e18));
@@ -53,7 +59,13 @@ contract NexusSushiSingleEthUSDC is ERC20("NexusSushiSingleEthUSDC", "NexusSushi
         }
     }
 
-    function withdraw(address account, uint256 shares) public onlyGovernance returns (uint256 ethExit) {
+    function withdraw(address account, uint256 shares)
+        public
+        onlyGovernance
+        nonReentrant
+        whenNotPaused
+        returns (uint256 ethExit)
+    {
         console.log("eth balance", address(this).balance);
         console.log("usd balance", IERC20(USDC).balanceOf(address(this)));
         console.log("price", ethToUsd(1e18));
@@ -90,16 +102,16 @@ contract NexusSushiSingleEthUSDC is ERC20("NexusSushiSingleEthUSDC", "NexusSushi
         return withdraw(account, balanceOf(account));
     }
 
-    function compoundProfits() external payable onlyGovernance {
+    function compoundProfits() external payable onlyGovernance nonReentrant whenNotPaused {
         // TODO swap 50% to USDC
         addLiquidity();
     }
 
     function emergencyLiquidate() external onlyOwner {
-        stopped = true;
         removeLiquiditySupportingFee(totalLiquidity);
         totalLiquidity = 0;
         withdrawFreeCapital();
         totalInvestedUSD = 0;
+        _pause();
     }
 }
