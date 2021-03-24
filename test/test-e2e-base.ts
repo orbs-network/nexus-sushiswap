@@ -69,9 +69,7 @@ export async function totalInvestedUSD() {
 export async function changeEthPrice(percent: number) {
   console.log("changing ETH price by", percent, "percent");
 
-  let price = await ethPrice();
-  console.log("price before", price.toString(10));
-
+  const price = await ethPrice();
   const targetPrice = price.muln((1 + percent / 100) * 1000).divn(1000);
   const usdDelta = await computeUsdDeltaForTargetPrice(targetPrice);
 
@@ -91,17 +89,14 @@ export async function changeEthPrice(percent: number) {
       .send({ from: usdcWhale, value: (await ethBalance(usdcWhale)).sub(ether) });
   }
 
-  price = await ethPrice();
-  console.log("price after", price.toString(10));
-  return price;
+  return await ethPrice();
 }
 
 /**
  * Swap large amounts several times to accrue interest via swap fees, returning to the same(-ish) price
- * TODO hack a better solution
  */
 export async function simulateInterestAccumulation() {
-  for (let i = 0; i < 10; i++) {
+  for (let i = 0; i < 50; i++) {
     await changeEthPrice(300);
     await changeEthPrice(-75);
   }
