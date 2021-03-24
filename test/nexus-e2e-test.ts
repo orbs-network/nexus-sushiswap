@@ -12,6 +12,7 @@ import {
   startPrice,
   totalInvestedUSD,
   usdcBalance,
+  simulateInterestAccumulation,
 } from "./test-e2e-base";
 import { expectRevert } from "./test-utils";
 
@@ -187,6 +188,26 @@ describe("LiquidityNexus with SushiSwap single sided ETH/USDC e2e", () => {
       await nexus.methods.withdrawAll(u2).send();
       expect(await totalInvestedUSD()).bignumber.zero;
       expect(await ethBalance(deployer)).bignumber.closeTo(startDeployerEthBalance.sub(bn18("35")), ether);
+    });
+
+    it("interest bearing lp tokens", async () => {
+      const user1 = Wallet.random().address;
+      const user2 = Wallet.random().address;
+
+      await nexus.methods.deposit(user1).send({ value: bn18("100") });
+      await nexus.methods.deposit(user2).send({ value: bn18("100") });
+
+      await simulateInterestAccumulation();
+
+      expect(await nexus.methods.withdrawAll(user1).call()).bignumber.closeTo(bn18("102.4"), bn18("0.1"));
+      await nexus.methods.withdrawAll(user1).send();
+      expect(await nexus.methods.withdrawAll(user2).call()).bignumber.closeTo(bn18("102.4"), bn18("0.1"));
+      await nexus.methods.withdrawAll(user2).send();
+
+      expect(await nexus.methods.totalInvestedUSD().call()).bignumber.zero;
+      expect(await nexus.methods.totalInvestedETH().call()).bignumber.zero;
+
+      expect(await usdcBalance()).bignumber.eq(startNexusUsdBalance);
     });
   });
 });

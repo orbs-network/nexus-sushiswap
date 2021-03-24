@@ -89,8 +89,8 @@ contract NexusSushiSingleEthUSDC is ERC20("NexusSushiSingleEthUSDC", "NexusSushi
 
         _burn(account, shares);
         totalLiquidity = totalLiquidity.sub(liquidity);
-        totalInvestedUSD = totalInvestedUSD.sub(usdExit);
-        totalInvestedETH = totalInvestedETH.sub(ethExit);
+        totalInvestedUSD = totalInvestedUSD > usdExit ? totalInvestedUSD.sub(usdExit) : 0; // truncate to 0 in case of interest accumulation
+        totalInvestedETH = totalInvestedETH > ethExit ? totalInvestedETH.sub(ethExit) : 0; // truncate to 0 in case of interest accumulation
 
         console.log("eth balance", address(this).balance);
         console.log("usd balance", IERC20(USDC).balanceOf(address(this)));

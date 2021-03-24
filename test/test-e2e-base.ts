@@ -63,7 +63,7 @@ export async function totalInvestedUSD() {
 /**
  * Changes eth price in pool by dumping USDC or ETH from a whale
  *
- * @param percent number (- or +)
+ * @param percent increase or decrease (- or +)
  * @returns the new eth price in usd
  */
 export async function changeEthPrice(percent: number) {
@@ -82,13 +82,29 @@ export async function changeEthPrice(percent: number) {
       .send({ from: usdcWhale });
   } else {
     await sushiRouter.methods
-      .swapETHForExactTokens(usdDelta, [Tokens.eth.WETH().address, Tokens.eth.USDC().address], usdcWhale, many)
-      .send({ from: usdcWhale, value: (await ethBalance(usdcWhale)).sub(bn18("1")) });
+      .swapETHForExactTokens(
+        usdDelta.muln(997).divn(1000),
+        [Tokens.eth.WETH().address, Tokens.eth.USDC().address],
+        usdcWhale,
+        many
+      )
+      .send({ from: usdcWhale, value: (await ethBalance(usdcWhale)).sub(ether) });
   }
 
   price = await ethPrice();
   console.log("price after", price.toString(10));
   return price;
+}
+
+/**
+ * Swap large amounts several times to accrue interest via swap fees, returning to the same(-ish) price
+ * TODO hack a better solution
+ */
+export async function simulateInterestAccumulation() {
+  for (let i = 0; i < 10; i++) {
+    await changeEthPrice(300);
+    await changeEthPrice(-75);
+  }
 }
 
 export const sushiRouter = contract<IUniswapV2Router02>(
