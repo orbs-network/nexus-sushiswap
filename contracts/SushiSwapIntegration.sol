@@ -55,7 +55,7 @@ contract SushiSwapIntegration is LiquidityNexusBase {
         usd = amounts[1];
     }
 
-    function addLiquidity()
+    function _addLiquidity(uint256 amountETHMin, uint256 deadline)
         internal
         returns (
             uint256 amountToken,
@@ -70,22 +70,26 @@ contract SushiSwapIntegration is LiquidityNexusBase {
             USDC,
             usdcAmount,
             0,
-            0,
+            amountETHMin,
             address(this),
-            block.timestamp // solhint-disable-line not-rely-on-time
+            deadline
         );
     }
 
-    function removeLiquidity(uint256 liquidity) internal returns (uint256 amountToken, uint256 amountETH) {
+    function _removeLiquidity(
+        uint liquidity,
+        uint amountETHMin,
+        uint deadline
+    ) internal returns (uint256 amountToken, uint256 amountETH) {
         if (liquidity == 0) return (0, 0);
 
         (amountToken, amountETH) = IUniswapV2Router02(SROUTER).removeLiquidityETH(
             USDC,
             liquidity,
             0,
-            0,
+            amountETHMin,
             address(this),
-            block.timestamp // solhint-disable-line not-rely-on-time
+            deadline
         );
     }
 
