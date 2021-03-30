@@ -236,17 +236,16 @@ describe("LiquidityNexus with SushiSwap single sided ETH/USDC e2e", () => {
       await nexus.methods.deposit(user1).send({ value: bn18("100") });
       await nexus.methods.deposit(user2).send({ value: bn18("100") });
 
-      await changeEthPrice(-80);
+      await changeEthPrice(-90);
 
       expect(await nexus.methods.withdrawAll(user1).call()).bignumber.closeTo(zero, ether);
       await nexus.methods.withdrawAll(user1).send();
       expect(await nexus.methods.withdrawAll(user2).call()).bignumber.closeTo(zero, ether);
       await nexus.methods.withdrawAll(user2).send();
 
-      // TODO deal with this
-      // expect(await nexus.methods.totalInvestedUSD().call()).bignumber.zero;
-      // expect(await nexus.methods.totalInvestedETH().call()).bignumber.zero;
-      // expect(await usdcBalance()).bignumber.eq(startNexusUsdBalance);
+      expect(await nexus.methods.totalInvestedUSD().call()).bignumber.zero;
+      expect(await nexus.methods.totalInvestedETH().call()).bignumber.zero;
+      expect(await usdcBalance()).bignumber.closeTo(startNexusUsdBalance.muln(987).divn(1000), bn6("1000")); // loss
     });
 
     it("price drop + interest", async () => {
@@ -269,4 +268,6 @@ describe("LiquidityNexus with SushiSwap single sided ETH/USDC e2e", () => {
       expect(await usdcBalance()).bignumber.eq(startNexusUsdBalance);
     });
   });
+
+  describe("comoundProfits", async () => {});
 });

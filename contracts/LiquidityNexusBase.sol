@@ -2,6 +2,7 @@
 pragma solidity ^0.7.6;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/math/Math.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
@@ -65,10 +66,6 @@ contract LiquidityNexusBase is Ownable, Pausable, ReentrancyGuard {
                 IERC20(token).safeTransfer(msg.sender, balance);
             }
         }
-    }
-
-    function min(uint256 a, uint256 b) internal pure returns (uint256) {
-        return a < b ? a : b;
     }
 
     receive() external payable {} // solhint-disable-line no-empty-blocks

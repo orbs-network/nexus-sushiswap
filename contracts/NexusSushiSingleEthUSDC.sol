@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.7.6;
 
-import "hardhat/console.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "./LiquidityNexusBase.sol";
 import "./SushiSwapIntegration.sol";
@@ -25,6 +24,9 @@ contract NexusSushiSingleEthUSDC is ERC20("NexusSushiSingleEthUSDC", "NexusSushi
     uint256 public totalInvestedETH;
     mapping(address => Account) public accounts;
 
+    /**
+     * assumes approval of deposited tokens
+     */
     function deposit(address account)
         public
         payable
@@ -33,10 +35,8 @@ contract NexusSushiSingleEthUSDC is ERC20("NexusSushiSingleEthUSDC", "NexusSushi
         whenNotPaused
         returns (uint256 shares)
     {
-        console.log("eth balance", address(this).balance);
-        console.log("usd balance", IERC20(USDC).balanceOf(address(this)));
-        console.log("price", ethToUsd(1e18));
-
+        // TODO safeTransferFrom
+        // TODO always supply more USDC than ETH when adding liquidity, revery in case leftover ETH (which means not enough USDC)
         (uint256 amountToken, uint256 amountETH, uint256 liquidity) = addLiquidity();
 
         if (totalSupply() == 0) {
@@ -64,48 +64,53 @@ contract NexusSushiSingleEthUSDC is ERC20("NexusSushiSingleEthUSDC", "NexusSushi
         onlyGovernance
         nonReentrant
         whenNotPaused
-        returns (uint256 ethExit)
+        returns (uint256 exitAmount, uint256 sharesToBurn)
     {
-        console.log("eth balance", address(this).balance);
-        console.log("usd balance", IERC20(USDC).balanceOf(address(this)));
-        console.log("price", ethToUsd(1e18));
-
         Account storage acc = accounts[account];
-        shares = min(shares, acc.shares);
-        require(shares > 0, "0 shares");
+        sharesToBurn = Math.min(shares, acc.shares);
+        require(sharesToBurn > 0, "0 shares");
 
-        uint256 liquidity = shares.mul(totalLiquidity).div(totalSupply());
+        uint256 liquidity = sharesToBurn.mul(totalLiquidity).div(totalSupply());
 
         (uint256 amountToken, uint256 amountETH) = removeLiquidity(liquidity);
 
-        uint256 usdEntry = acc.usd.mul(shares).div(acc.shares);
-        uint256 ethEntry = acc.eth.mul(shares).div(acc.shares);
-        uint256 usdExit;
-        (ethExit, usdExit) = applyRebalance(amountETH, amountToken, ethEntry, usdEntry);
+        uint256 usdEntry = acc.usd.mul(sharesToBurn).div(acc.shares);
+        uint256 ethEntry = acc.eth.mul(sharesToBurn).div(acc.shares);
+        (uint256 ethExit, uint256 usdExit) = applyRebalance(amountETH, amountToken, ethEntry, usdEntry);
 
         acc.usd = acc.usd.sub(usdEntry);
         acc.eth = acc.eth.sub(ethEntry);
-        acc.shares = acc.shares.sub(shares);
+        acc.shares = acc.shares.sub(sharesToBurn);
 
-        _burn(account, shares);
+        _burn(account, sharesToBurn);
         totalLiquidity = totalLiquidity.sub(liquidity);
-        // TODO do we really need these?
-        totalInvestedUSD = totalInvestedUSD > usdExit ? totalInvestedUSD.sub(usdExit) : 0; // truncate to 0 in case of interest accumulation
-        totalInvestedETH = totalInvestedETH > ethExit ? totalInvestedETH.sub(ethExit) : 0; // truncate to 0 in case of interest accumulation
+        totalInvestedUSD = totalInvestedUSD.sub(usdEntry);
+        totalInvestedETH = totalInvestedETH.sub(ethEntry);
 
-        console.log("eth balance", address(this).balance);
-        console.log("usd balance", IERC20(USDC).balanceOf(address(this)));
-        console.log("ethExit", ethExit);
         msg.sender.transfer(ethExit);
     }
 
-    function withdrawAll(address account) external onlyGovernance returns (uint256 ethExit) {
+    function withdrawAll(address account) external onlyGovernance returns (uint256 exitAmount, uint256 sharesToBurn) {
         return withdraw(account, balanceOf(account));
     }
 
-    function compoundProfits() external payable onlyGovernance nonReentrant whenNotPaused {
-        // TODO swap 50% to USDC
-        addLiquidity();
+    function compoundProfits()
+        external
+        payable
+        onlyGovernance
+        nonReentrant
+        whenNotPaused
+        returns (
+            uint256 usd,
+            uint256 eth,
+            uint256 liquidity
+        )
+    {
+        require(msg.value > 1000, "minimum value");
+        eth = msg.value.div(2);
+        usd = swapEthToUsd(eth);
+        (, , liquidity) = addLiquidity();
+        totalLiquidity = totalLiquidity.add(liquidity);
     }
 
     function emergencyLiquidate() external onlyOwner {
@@ -113,6 +118,5 @@ contract NexusSushiSingleEthUSDC is ERC20("NexusSushiSingleEthUSDC", "NexusSushi
         totalLiquidity = 0;
         withdrawFreeCapital();
         totalInvestedUSD = 0;
-        _pause();
     }
 }

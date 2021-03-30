@@ -23,7 +23,7 @@ contract RebalancingStrategy1 is SushiSwapIntegration {
             usdExit = usdEntry;
         } else {
             uint256 usdDelta = usdEntry.sub(amountUsd);
-            uint256 ethDelta = min(amountEth, ethAmountInForRequestedUsd(usdDelta));
+            uint256 ethDelta = Math.min(amountEth, ethAmountInForRequestedUsd(usdDelta));
             usdExit = amountUsd.add(swapEthToUsd(ethDelta));
             ethExit = amountEth.sub(ethDelta);
         }
