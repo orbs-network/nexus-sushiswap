@@ -12,19 +12,19 @@ contract RebalancingStrategy2 is SushiSwapIntegration {
      * preferring first to compensate eth provider while maintaining usd provider initial principal
      */
     function applyRebalance(
-        uint256 amountEth,
-        uint256 amountUsd,
-        uint256 ethEntry,
-        uint256 usdEntry
-    ) private returns (uint256 ethExit, uint256 usdExit) {
-        if (amountUsd > usdEntry) {
-            uint256 usdDelta = amountUsd.sub(usdEntry);
-            ethExit = amountEth.add(swapUsdToEth(usdDelta));
-            usdExit = usdEntry;
+        uint256 removedUSDC,
+        uint256 removedETH,
+        uint256 entryUSDC,
+        uint256 entryETH
+    ) internal returns (uint256 exitUSDC, uint256 exitETH) {
+        if (removedUSDC > entryUSDC) {
+            uint256 deltaUSDC = removedUSDC.sub(entryUSDC);
+            exitETH = removedETH.add(_swapExactUSDCForETH(deltaUSDC));
+            exitUSDC = entryUSDC;
         } else {
-            uint256 ethDelta = amountEth.sub(ethEntry); // TODO underflow?
-            usdExit = amountUsd.add(swapEthToUsd(ethDelta));
-            ethExit = ethEntry;
+            uint256 deltaETH = removedETH.sub(entryETH); // TODO underflow?
+            exitUSDC = removedUSDC.add(_swapExactETHForUSDC(deltaETH));
+            exitETH = entryETH;
         }
     }
 }

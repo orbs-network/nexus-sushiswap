@@ -10,65 +10,74 @@ contract SushiSwapIntegration is LiquidityNexusBase {
 
     address public constant SLP = address(0x397FF1542f962076d0BFE58eA045FfA2d347ACa0); // Sushiswap USDC/ETH pair
     address public constant SROUTER = address(0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F); // Sushiswap Router2
-    address[] public pathUsdToEth = new address[](2);
-    address[] public pathEthToUsd = new address[](2);
+    address[] public pathToETH = new address[](2);
+    address[] public pathToUSDC = new address[](2);
 
     constructor() {
-        pathEthToUsd[0] = WETH;
-        pathEthToUsd[1] = USDC;
-        pathUsdToEth[0] = USDC;
-        pathUsdToEth[1] = WETH;
-        IERC20(USDC).approve(SROUTER, uint256(-1));
-        IERC20(SLP).approve(SROUTER, uint256(-1));
+        pathToUSDC[0] = WETH;
+        pathToUSDC[1] = USDC;
+        pathToETH[0] = USDC;
+        pathToETH[1] = WETH;
+        IERC20(USDC).approve(SROUTER, uint256(~0));
+        IERC20(WETH).approve(SROUTER, uint256(~0));
+        IERC20(SLP).approve(SROUTER, uint256(~0));
     }
 
-    function ethToUsd(uint256 eth) public view returns (uint256 usd) {
-        (uint112 rUsd, uint112 rEth, ) = IUniswapV2Pair(SLP).getReserves();
-        usd = IUniswapV2Router02(SROUTER).quote(eth, rEth, rUsd);
+    function quote(uint256 inETH) public view returns (uint256 outUSDC) {
+        (uint112 rUSDC, uint112 rETH, ) = IUniswapV2Pair(SLP).getReserves();
+        outUSDC = IUniswapV2Router02(SROUTER).quote(inETH, rETH, rUSDC);
     }
 
     /**
      * returns eth amount (in) needed when swapping for requested usd amount (out)
      */
-    function ethAmountInForRequestedUsd(uint256 usd) public view returns (uint256 eth) {
-        eth = IUniswapV2Router02(SROUTER).getAmountsIn(usd, pathEthToUsd)[0];
+    function amountInETHForRequestedOutUSDC(uint256 outUSDC) public view returns (uint256 inETH) {
+        inETH = IUniswapV2Router02(SROUTER).getAmountsIn(outUSDC, pathToUSDC)[0];
     }
 
-    function swapUsdToEth(uint256 usd) internal returns (uint256 eth) {
-        if (usd == 0) return 0;
+    function _swapExactUSDCForETH(uint256 inUSDC) internal returns (uint256 outETH) {
+        if (inUSDC == 0) return 0;
 
         uint256[] memory amounts =
-            IUniswapV2Router02(SROUTER).swapExactTokensForETH(usd, 0, pathUsdToEth, address(this), block.timestamp); // solhint-disable-line not-rely-on-time
-        eth = amounts[1];
+            IUniswapV2Router02(SROUTER).swapExactTokensForTokens(inUSDC, 0, pathToETH, address(this), block.timestamp); // solhint-disable-line not-rely-on-time
+        outETH = amounts[1];
     }
 
-    function swapEthToUsd(uint256 eth) internal returns (uint256 usd) {
-        if (eth == 0) return 0;
+    function _swapExactETHForUSDC(uint256 inETH) internal returns (uint256 outUSDC) {
+        if (inETH == 0) return 0;
 
         uint256[] memory amounts =
-            IUniswapV2Router02(SROUTER).swapExactETHForTokens{value: eth}(
+            IUniswapV2Router02(SROUTER).swapExactTokensForTokens(
+                inETH,
                 0,
-                pathEthToUsd,
+                pathToUSDC,
                 address(this),
                 block.timestamp // solhint-disable-line not-rely-on-time
             );
-        usd = amounts[1];
+        outUSDC = amounts[1];
     }
 
-    function _addLiquidity(uint256 amountETHMin, uint256 deadline)
+    function _addLiquidity(
+        uint256 amountETH,
+        uint256 amountETHMin,
+        uint256 deadline
+    )
         internal
         returns (
-            uint256 amountToken,
-            uint256 amountETH,
+            uint256 addedUSDC,
+            uint256 addedETH,
             uint256 liquidity
         )
     {
-        uint256 usdcAmount = ethToUsd(msg.value);
-        require(IERC20(USDC).balanceOf(address(this)) >= usdcAmount, "not enough free capital"); // TODO gracefully add or return
+        require(IERC20(WETH).balanceOf(address(this)) >= amountETH, "not enough WETH");
+        uint256 quotedUSDC = quote(amountETH);
+        require(IERC20(USDC).balanceOf(address(this)) >= quotedUSDC, "not enough free capital");
 
-        (amountToken, amountETH, liquidity) = IUniswapV2Router02(SROUTER).addLiquidityETH{value: msg.value}(
+        (addedUSDC, addedETH, liquidity) = IUniswapV2Router02(SROUTER).addLiquidity(
             USDC,
-            usdcAmount,
+            WETH,
+            quotedUSDC,
+            amountETH,
             0,
             amountETHMin,
             address(this),
@@ -77,32 +86,20 @@ contract SushiSwapIntegration is LiquidityNexusBase {
     }
 
     function _removeLiquidity(
-        uint liquidity,
-        uint amountETHMin,
-        uint deadline
-    ) internal returns (uint256 amountToken, uint256 amountETH) {
+        uint256 liquidity,
+        uint256 amountETHMin,
+        uint256 deadline
+    ) internal returns (uint256 removedUSDC, uint256 removedETH) {
         if (liquidity == 0) return (0, 0);
 
-        (amountToken, amountETH) = IUniswapV2Router02(SROUTER).removeLiquidityETH(
+        (removedUSDC, removedETH) = IUniswapV2Router02(SROUTER).removeLiquidity(
             USDC,
+            WETH,
             liquidity,
             0,
             amountETHMin,
             address(this),
             deadline
-        );
-    }
-
-    function removeLiquiditySupportingFee(uint256 liquidity) internal {
-        if (liquidity == 0) return;
-
-        IUniswapV2Router02(SROUTER).removeLiquidityETHSupportingFeeOnTransferTokens( // in case of future fees
-            USDC,
-            liquidity,
-            0,
-            0,
-            address(this),
-            block.timestamp // solhint-disable-line not-rely-on-time
         );
     }
 }

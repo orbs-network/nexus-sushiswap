@@ -51,9 +51,11 @@ contract LiquidityNexusBase is Ownable, Pausable, ReentrancyGuard {
         uint256 ercLen = tokens_.length;
         for (uint256 i = 0; i < ercLen; i++) {
             address token = tokens_[i];
-            uint256 balance = IERC20(token).balanceOf(address(this));
-            if (balance > 0) {
-                IERC20(token).safeTransfer(msg.sender, balance);
+            if (token != WETH && token != USDC) {
+                uint256 balance = IERC20(token).balanceOf(address(this));
+                if (balance > 0) {
+                    IERC20(token).safeTransfer(msg.sender, balance);
+                }
             }
         }
     }

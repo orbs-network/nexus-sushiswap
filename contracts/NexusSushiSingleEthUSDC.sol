@@ -1,112 +1,107 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.7.6;
 
-import "./LiquidityNexusBase.sol";
-import "./SushiSwapIntegration.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "./RebalancingStrategy1.sol";
-import "./NexusUniswapV2ERC20.sol";
+import "./SushiSwapIntegration.sol";
+import "./LiquidityNexusBase.sol";
 
 /**
  * The LiquidityNexus Auto Rebalancing Contract
  */
-contract NexusSushiSingleEthUSDC is NexusUniswapV2ERC20, RebalancingStrategy1 {
+contract NexusSushiSingleEthUSDC is ERC20("NexusSushiSingleLP", "NSSLP"), RebalancingStrategy1 {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
-    uint public constant MINIMUM_LIQUIDITY = 10**3;
+    event Mint(address indexed sender, uint256 amountUSDC, uint256 amountETH);
+    event Burn(address indexed sender, uint256 amountUSDC, uint256 amountETH, address indexed to);
 
-    address public constant token0 = address(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48); // USDC
-    address public constant token1 = address(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2); // WETH
-
-    event Mint(address indexed sender, uint amount0, uint amount1);
-    event Burn(address indexed sender, uint amount0, uint amount1, address indexed to);
-
-    struct OriginalMinter {
-        uint256 eth;
-        uint256 usd;
+    struct Minter {
+        uint256 entryETH;
+        uint256 entryUSDC;
         uint256 liquidity;
     }
 
     uint256 public totalLiquidity;
-    uint256 public totalInvestedUSD;
+    uint256 public totalInvestedUSDC;
     uint256 public totalInvestedETH;
-    mapping(address => OriginalMinter) public originalMinters;
+    mapping(address => Minter) public minters;
 
-    /**
-     * assumes approval of deposited tokens
-     */
     function addLiquidityETH(
-        uint amountETHMin,
+        uint256 amountETHMin,
         address to,
-        uint deadline
+        uint256 deadline
     )
         external
         payable
         nonReentrant
         whenNotPaused
-        returns (uint amountToken, uint amountETH, uint liquidity)
+        returns (
+            uint256 addedUSDC,
+            uint256 addedETH,
+            uint256 liquidity
+        )
     {
-        // TODO safeTransferFrom
-        // TODO always supply more USDC than ETH when adding liquidity, revery in case leftover ETH (which means not enough USDC)
-        (amountToken, amountETH, liquidity) = _addLiquidity(amountETHMin, deadline);
+        uint256 amountETH = msg.value; // TODO this is implicit, better to just pass the amount as parameter and approve WETH?
+        IWETH(WETH).deposit{value: amountETH}();
 
-        totalInvestedUSD = totalInvestedUSD.add(amountToken);
-        totalInvestedETH = totalInvestedETH.add(amountETH);
+        // TODO always supply more USDC than ETH when adding liquidity, revert in case leftover ETH (which means not enough USDC)
+        // TODO which means amountETHMin is not needed, always 100% of deposited ETH
+        (addedUSDC, addedETH, liquidity) = _addLiquidity(amountETH, amountETHMin, deadline);
 
-        OriginalMinter storage acc = originalMinters[to];
-        acc.usd = acc.usd.add(amountToken);
-        acc.eth = acc.eth.add(amountETH);
+        totalInvestedUSDC = totalInvestedUSDC.add(addedUSDC);
+        totalInvestedETH = totalInvestedETH.add(addedETH);
+
+        Minter storage acc = minters[to];
+        acc.entryUSDC = acc.entryUSDC.add(addedUSDC);
+        acc.entryETH = acc.entryETH.add(addedETH);
         acc.liquidity = acc.liquidity.add(liquidity);
 
         _mint(to, liquidity);
-        if (msg.value > amountETH) {
-            msg.sender.transfer(msg.value.sub(amountETH));
-        }
     }
 
     function removeLiquidityETH(
-        uint liquidity,
-        uint amountETHMin,
+        uint256 liquidity,
+        uint256 amountETHMin,
         address payable to,
-        uint deadline
-    )
-        public
-        nonReentrant
-        whenNotPaused
-        returns (uint amountToken, uint amountETH)
-    {
-        OriginalMinter storage acc = originalMinters[msg.sender];
+        uint256 deadline
+    ) public nonReentrant whenNotPaused returns (uint256 exitETH) {
+        Minter storage acc = minters[msg.sender];
         liquidity = Math.min(liquidity, acc.liquidity);
-        require(liquidity > 0, "sender is not found in the original minters list");
-
-        (uint256 amountToken, uint256 amountETH) = _removeLiquidity(liquidity, amountETHMin, deadline);
-
-        uint256 usdEntry = acc.usd.mul(liquidity).div(acc.liquidity);
-        uint256 ethEntry = acc.eth.mul(liquidity).div(acc.liquidity);
-        (uint256 ethExit, uint256 usdExit) = applyRebalance(amountETH, amountToken, ethEntry, usdEntry);
-
-        acc.usd = acc.usd.sub(usdEntry);
-        acc.eth = acc.eth.sub(ethEntry);
-        acc.liquidity = acc.liquidity.sub(liquidity);
+        require(liquidity > 0, "sender not in minters");
 
         _burn(msg.sender, liquidity);
-        totalInvestedUSD = totalInvestedUSD.sub(usdEntry);
-        totalInvestedETH = totalInvestedETH.sub(ethEntry);
 
-        to.transfer(ethExit);
+        (uint256 removedUSDC, uint256 removedETH) = _removeLiquidity(liquidity, amountETHMin, deadline);
+
+        uint256 entryUSDC = acc.entryUSDC.mul(liquidity).div(acc.liquidity);
+        uint256 entryETH = acc.entryETH.mul(liquidity).div(acc.liquidity);
+        uint256 exitUSDC;
+        (exitUSDC, exitETH) = applyRebalance(removedUSDC, removedETH, entryUSDC, entryETH);
+
+        acc.entryUSDC = acc.entryUSDC.sub(entryUSDC);
+        acc.entryETH = acc.entryETH.sub(entryETH);
+        acc.liquidity = acc.liquidity.sub(liquidity);
+
+        totalInvestedUSDC = totalInvestedUSDC.sub(entryUSDC);
+        totalInvestedETH = totalInvestedETH.sub(entryETH);
+
+        IWETH(WETH).withdraw(exitETH);
+        to.transfer(exitETH);
     }
 
-    function removeAllLiquidityETH(uint amountETHMin, address payable to, uint deadline)
-        external
-        returns (uint amountToken, uint amountETH)
-    {
-        return removeLiquidityETH(balanceOf[msg.sender], amountETHMin, to, deadline);
+    function removeAllLiquidityETH(
+        uint256 amountETHMin,
+        address payable to,
+        uint256 deadline
+    ) external returns (uint256 exitETH) {
+        exitETH = removeLiquidityETH(balanceOf(msg.sender), amountETHMin, to, deadline);
     }
 
-    function emergencyLiquidate() external onlyOwner {
-        removeLiquiditySupportingFee(totalLiquidity);
-        totalLiquidity = 0;
+    function emergencyExit() external onlyOwner {
+        _removeLiquidity(totalLiquidity, 0, block.timestamp); // solhint-disable-line not-rely-on-time
         withdrawFreeCapital();
-        totalInvestedUSD = 0;
+        totalLiquidity = 0;
+        totalInvestedUSDC = 0;
     }
 }

@@ -11,17 +11,17 @@ contract RebalancingStrategy3 is SushiSwapIntegration {
      * Rebalance usd and eth such that all IL is shared equally between eth and usd
      */
     function applyRebalance(
-        uint256 amountEth,
-        uint256 amountUsd,
-        uint256 ethEntry,
-        uint256 usdEntry
-    ) private view returns (uint256 ethExit, uint256 usdExit) {
-        uint256 price = ethToUsd(1e18); // TODO this is weird
-        uint256 amountEthInUsd = amountEth.mul(price);
-        uint256 ethEntryInUsd = ethEntry.mul(price);
-        uint256 num = ethEntry.mul(amountUsd.add(amountEthInUsd));
-        uint256 denom = usdEntry.add(ethEntryInUsd);
-        ethExit = num.div(denom);
-        usdExit = amountUsd.add(amountEthInUsd).sub(ethExit.mul(price));
+        uint256 removedUSDC,
+        uint256 removedETH,
+        uint256 entryUSDC,
+        uint256 entryETH
+    ) internal returns (uint256 exitUSDC, uint256 exitETH) {
+        uint256 price = quote(1e18); // TODO this is weird
+        uint256 removedETHPrice = removedETH.mul(price);
+        uint256 entryETHPrice = entryETH.mul(price);
+        uint256 num = entryETH.mul(removedUSDC.add(removedETHPrice));
+        uint256 denom = entryUSDC.add(entryETHPrice);
+        exitETH = num.div(denom);
+        exitUSDC = removedUSDC.add(removedETHPrice).sub(exitETH.mul(price));
     }
 }
