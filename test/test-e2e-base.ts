@@ -1,19 +1,19 @@
 import BN from "bn.js";
-import { bn, bn18, bn6, ether, many } from "../src/utils";
+import { bn, bn6, ether, many } from "../src/utils";
 import { IUniswapV2Pair } from "../typechain-hardhat/IUniswapV2Pair";
 import { contract, deployContract } from "../src/extensions";
 import { impersonate, resetFakeNetworkFork, web3 } from "../src/network";
 import { Tokens } from "../src/impl/token";
 import { IUniswapV2Router02 } from "../typechain-hardhat/IUniswapV2Router02";
 import { Wallet } from "../src/impl/wallet";
-import { NexusSushiSingleEthUSDC } from "../typechain-hardhat/NexusSushiSingleEthUSDC";
+import { LiquidityNexusSushiLP } from "../typechain-hardhat/LiquidityNexusSushiLP";
 
 const usdcWhale = "0xBE0eB53F46cd790Cd13851d5EFf43D12404d33E8"; // binance7
 
 export let deployer: string;
-export let nexus: NexusSushiSingleEthUSDC;
-export let startDeployerEthBalance: BN;
-export let startNexusUsdBalance: BN;
+export let nexus: LiquidityNexusSushiLP;
+export let startDeployerBalanceETH: BN;
+export let startNexusBalanceUSDC: BN;
 export let startPrice: BN;
 
 /**
@@ -25,39 +25,39 @@ beforeEach(async () => {
   const wallet = await Wallet.fake();
   wallet.setAsDefaultSigner();
   deployer = wallet.address;
-  nexus = await deployContract<NexusSushiSingleEthUSDC>("NexusSushiSingleEthUSDC", deployer);
+  nexus = await deployContract<LiquidityNexusSushiLP>("LiquidityNexusSushiLP", deployer);
 
   await supplyCapitalAsDeployer(bn6("10,000,000"));
-  [startDeployerEthBalance, startNexusUsdBalance, startPrice] = await Promise.all([
-    ethBalance(deployer),
-    usdcBalance(),
-    ethPrice(),
+  [startDeployerBalanceETH, startNexusBalanceUSDC, startPrice] = await Promise.all([
+    balanceETH(deployer),
+    balanceUSDC(),
+    quote(),
   ]);
 });
 
 /**
  * @returns eth price quote in usd, from nexus contract
  */
-export async function ethPrice() {
-  return bn(await nexus.methods.ethToUsd(ether).call());
+export async function quote() {
+  return bn(await nexus.methods.quote(ether).call());
 }
 
 /**
  * @returns usdc balance, defaults to nexus address
  */
-export async function usdcBalance(address: string = nexus.options.address) {
+export async function balanceUSDC(address: string = nexus.options.address) {
   return bn(await Tokens.eth.USDC().methods.balanceOf(address).call());
 }
 
 /**
  * @returns eth balance, defaults to nexus address
  */
-export async function ethBalance(address: string = nexus.options.address) {
+export async function balanceETH(address: string = nexus.options.address) {
   return bn(await web3().eth.getBalance(address));
 }
 
-export async function totalInvestedUSD() {
-  return bn(await nexus.methods.totalInvestedUSD().call());
+export async function totalInvestedUSDC() {
+  return bn(await nexus.methods.totalInvestedUSDC().call());
 }
 
 /**
@@ -69,7 +69,7 @@ export async function totalInvestedUSD() {
 export async function changeEthPrice(percent: number) {
   console.log("changing ETH price by", percent, "percent");
 
-  const price = await ethPrice();
+  const price = await quote();
   const targetPrice = price.muln((1 + percent / 100) * 1000).divn(1000);
   const usdDelta = await computeUsdDeltaForTargetPrice(targetPrice);
 
@@ -86,10 +86,10 @@ export async function changeEthPrice(percent: number) {
         usdcWhale,
         many
       )
-      .send({ from: usdcWhale, value: (await ethBalance(usdcWhale)).sub(ether) });
+      .send({ from: usdcWhale, value: (await balanceETH(usdcWhale)).sub(ether) });
   }
 
-  return await ethPrice();
+  return await quote();
 }
 
 /**
@@ -122,7 +122,7 @@ async function supplyCapitalAsDeployer(amount: BN) {
  * Takes USDC from whale ensuring minimum amount
  */
 async function ensureUsdBalance(address: string, amount: BN) {
-  if ((await usdcBalance(address)).lt(amount)) {
+  if ((await balanceUSDC(address)).lt(amount)) {
     await Tokens.eth.USDC().methods.transfer(address, amount).send({ from: usdcWhale });
   }
 }

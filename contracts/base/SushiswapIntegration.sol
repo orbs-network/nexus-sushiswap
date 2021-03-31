@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.7.6;
 
-import "./ISushiswapRouter.sol";
 import "./LiquidityNexusBase.sol";
+import "../interface/ISushiswapRouter.sol";
 
-contract SushiSwapIntegration is LiquidityNexusBase {
+contract SushiswapIntegration is LiquidityNexusBase {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
@@ -57,11 +57,7 @@ contract SushiSwapIntegration is LiquidityNexusBase {
         outUSDC = amounts[1];
     }
 
-    function _addLiquidity(
-        uint256 amountETH,
-        uint256 amountETHMin,
-        uint256 deadline
-    )
+    function _addLiquidity(uint256 amountETH, uint256 deadline)
         internal
         returns (
             uint256 addedUSDC,
@@ -79,17 +75,16 @@ contract SushiSwapIntegration is LiquidityNexusBase {
             quotedUSDC,
             amountETH,
             0,
-            amountETHMin,
+            amountETH,
             address(this),
             deadline
         );
     }
 
-    function _removeLiquidity(
-        uint256 liquidity,
-        uint256 amountETHMin,
-        uint256 deadline
-    ) internal returns (uint256 removedUSDC, uint256 removedETH) {
+    function _removeLiquidity(uint256 liquidity, uint256 deadline)
+        internal
+        returns (uint256 removedUSDC, uint256 removedETH)
+    {
         if (liquidity == 0) return (0, 0);
 
         (removedUSDC, removedETH) = IUniswapV2Router02(SROUTER).removeLiquidity(
@@ -97,7 +92,7 @@ contract SushiSwapIntegration is LiquidityNexusBase {
             WETH,
             liquidity,
             0,
-            amountETHMin,
+            0,
             address(this),
             deadline
         );

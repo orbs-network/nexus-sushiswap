@@ -3,9 +3,9 @@ import _ from "lodash";
 import Web3 from "web3";
 import BN from "bn.js";
 
-export const many = bn18("1,000,000,000,000,000,000,000,000,000,000,000"); //decillion ether
-export const ether = bn18("1");
 export const zero = bn("0");
+export const ether = bn18("1");
+export const many = ether.pow(bn(2));
 
 export function bn(n: BN | string | number): BN {
   if (!n) return zero;

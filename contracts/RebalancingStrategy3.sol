@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.7.6;
+import "./base/SushiswapIntegration.sol";
 
-import "./SushiSwapIntegration.sol";
-
-contract RebalancingStrategy3 is SushiSwapIntegration {
+contract RebalancingStrategy3 is SushiswapIntegration {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
