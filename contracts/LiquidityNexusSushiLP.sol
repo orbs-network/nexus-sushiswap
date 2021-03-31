@@ -4,6 +4,7 @@ pragma solidity ^0.7.6;
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "./RebalancingStrategy1.sol";
+import "./base/LiquidityNexusStaking.sol";
 
 /**
  * The LiquidityNexus Auto Rebalancing Contract for USDC/ETH single sided liquidity
@@ -52,7 +53,7 @@ contract LiquidityNexusSushiLP is ERC20("LiquidityNexusSushiLP", "LNSLP"), Rebal
             uint256 liquidity
         )
     {
-        IERC20(WETH).transferFrom(msg.sender, address(this), amountETH);
+        IERC20(WETH).safeTransferFrom(msg.sender, address(this), amountETH);
         return _addLiquidityInternal(amountETH, deadline);
     }
 
@@ -74,12 +75,12 @@ contract LiquidityNexusSushiLP is ERC20("LiquidityNexusSushiLP", "LNSLP"), Rebal
         returns (uint256 exitETH)
     {
         exitETH = _removeLiquidityInternal(liquidity, deadline);
-        IERC20(WETH).transfer(msg.sender, exitETH);
+        IERC20(WETH).safeTransfer(msg.sender, exitETH);
     }
 
     function removeAllLiquidity() external nonReentrant whenNotPaused returns (uint256 exitETH) {
         exitETH = _removeLiquidityInternal(balanceOf(msg.sender), block.timestamp); // solhint-disable-line not-rely-on-time
-        IERC20(WETH).transfer(msg.sender, exitETH);
+        IERC20(WETH).safeTransfer(msg.sender, exitETH);
     }
 
     function removeAllLiquidityETH() external nonReentrant whenNotPaused returns (uint256 exitETH) {
@@ -107,6 +108,7 @@ contract LiquidityNexusSushiLP is ERC20("LiquidityNexusSushiLP", "LNSLP"), Rebal
         acc.liquidity = acc.liquidity.add(liquidity);
 
         _mint(msg.sender, liquidity);
+        emit Mint(msg.sender, addedUSDC, addedETH);
     }
 
     function _removeLiquidityInternal(uint256 liquidity, uint256 deadline) internal returns (uint256 exitETH) {
@@ -129,6 +131,8 @@ contract LiquidityNexusSushiLP is ERC20("LiquidityNexusSushiLP", "LNSLP"), Rebal
 
         totalInvestedUSDC = totalInvestedUSDC.sub(entryUSDC);
         totalInvestedETH = totalInvestedETH.sub(entryETH);
+
+        emit Burn(msg.sender, exitUSDC, exitETH, msg.sender);
     }
 
     function emergencyExit() external onlyOwner {
@@ -137,8 +141,4 @@ contract LiquidityNexusSushiLP is ERC20("LiquidityNexusSushiLP", "LNSLP"), Rebal
         totalLiquidity = 0;
         totalInvestedUSDC = 0;
     }
-
-    //    function stake(uint amount) external {
-    //        IERC20(address(this)).transferFrom(msg.sender);
-    //    }
 }
