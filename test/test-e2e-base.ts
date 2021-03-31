@@ -103,12 +103,12 @@ export async function simulateInterestAccumulation() {
 }
 
 export const sushiRouter = contract<IUniswapV2Router02>(
-  require("../artifacts/contracts/ISushiswapRouter.sol/IUniswapV2Router02.json").abi,
+  require("../artifacts/contracts/interface/ISushiswapRouter.sol/IUniswapV2Router02.json").abi,
   "0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F"
 );
 
 export const sushiEthUsdPair = contract<IUniswapV2Pair>(
-  require("../artifacts/contracts/ISushiswapRouter.sol/IUniswapV2Pair.json").abi,
+  require("../artifacts/contracts/interface/ISushiswapRouter.sol/IUniswapV2Pair.json").abi,
   "0x397FF1542f962076d0BFE58eA045FfA2d347ACa0"
 );
 
