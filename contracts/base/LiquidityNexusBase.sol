@@ -15,6 +15,16 @@ contract LiquidityNexusBase is Ownable, Pausable, ReentrancyGuard {
 
     address public constant WETH = address(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
     address public constant USDC = address(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
+    address public governance;
+
+    constructor() {
+        governance = msg.sender;
+    }
+
+    modifier onlyGovernance() {
+        require(msg.sender == governance, "only governance");
+        _;
+    }
 
     function depositCapital(uint256 amount) public onlyOwner {
         if (amount > 0) {

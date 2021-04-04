@@ -56,6 +56,13 @@ export async function resetFakeNetworkFork(blockNumber: number = forkingBlockNum
   console.log("block", await block());
 }
 
+export async function advanceTime(seconds: number) {
+  const b = await block();
+  console.log(`advancing time by ${seconds} seconds`);
+  await network().provider.send("evm_increaseTime", [seconds]);
+  await network().provider.send("evm_mine", [(await web3().eth.getBlock(b)).timestamp + seconds]);
+}
+
 export function onFakeNetwork() {
   return network().config.chainId == hre().config.networks.hardhat.chainId;
 }

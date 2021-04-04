@@ -15,6 +15,7 @@ import {
   simulateInterestAccumulation,
 } from "./test-e2e-base";
 import { expectRevert } from "./test-utils";
+import { advanceTime } from "../src/network";
 
 describe("LiquidityNexus with Sushiswap single sided ETH/USDC e2e", () => {
   describe("sanity", () => {
@@ -25,6 +26,7 @@ describe("LiquidityNexus with Sushiswap single sided ETH/USDC e2e", () => {
       expect(await nexus.methods.owner().call()).eq(deployer);
       expect(await nexus.methods.totalLiquidity().call()).bignumber.zero;
       expect(await nexus.methods.totalSupply().call()).bignumber.zero;
+      expect(await nexus.methods.governance().call()).eq(deployer);
 
       expect(await balanceETH()).bignumber.zero;
     });
@@ -40,7 +42,7 @@ describe("LiquidityNexus with Sushiswap single sided ETH/USDC e2e", () => {
 
     await nexus.methods.emergencyExit().send();
 
-    expect(await nexus.methods.paused().call()).to.be.true;
+    expect(await nexus.methods.paused().call()).to.be.false;
     expect(await balanceUSDC()).bignumber.zero;
     expect(await balanceUSDC(deployer)).not.bignumber.zero;
   });
@@ -237,6 +239,10 @@ describe("LiquidityNexus with Sushiswap single sided ETH/USDC e2e", () => {
     });
 
     it("extreme price drop", async () => {
+      expect(await balanceUSDC())
+        .bignumber.eq(bn6("10,000,000"))
+        .eq(startNexusBalanceUSDC);
+
       await nexus.methods.addLiquidityETH(many).send({ value: bn18("100") });
 
       await changeEthPrice(-90);
@@ -246,7 +252,7 @@ describe("LiquidityNexus with Sushiswap single sided ETH/USDC e2e", () => {
 
       expect(await nexus.methods.totalInvestedUSDC().call()).bignumber.zero;
       expect(await nexus.methods.totalInvestedETH().call()).bignumber.zero;
-      expect(await balanceUSDC()).bignumber.closeTo(startNexusBalanceUSDC.muln(987).divn(1000), bn6("1000")); // loss
+      expect(await balanceUSDC()).bignumber.closeTo(bn6("9,934,000"), bn6("1,000")); // loss
     });
 
     it("price drop + interest", async () => {
@@ -261,6 +267,25 @@ describe("LiquidityNexus with Sushiswap single sided ETH/USDC e2e", () => {
       expect(await nexus.methods.totalInvestedUSDC().call()).bignumber.zero;
       expect(await nexus.methods.totalInvestedETH().call()).bignumber.zero;
       expect(await balanceUSDC()).bignumber.eq(startNexusBalanceUSDC);
+    });
+  });
+
+  describe("auto staking", () => {
+    it("stake in addLiquidity, claim rewards in SUHI, unstake in removeLiquidity", async () => {
+      expect(await nexus.methods.claimRewards().call()).bignumber.zero;
+      await advanceTime(60 * 60 * 24); // 1 day
+      expect(await nexus.methods.claimRewards().call()).bignumber.zero;
+
+      await nexus.methods.addLiquidityETH(many).send({ value: bn18("100") });
+
+      await advanceTime(60 * 60 * 24); // 1 day
+      expect(await nexus.methods.claimRewards().call()).bignumber.greaterThan(zero);
+
+      await nexus.methods.claimRewards().send();
+      expect(await nexus.methods.claimRewards().call()).bignumber.zero;
+
+      await nexus.methods.removeAllLiquidityETH().send();
+      expect(await nexus.methods.claimRewards().call()).bignumber.zero;
     });
   });
 
