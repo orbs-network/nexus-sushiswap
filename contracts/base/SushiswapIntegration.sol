@@ -113,10 +113,7 @@ contract SushiswapIntegration is LiquidityNexusBase {
         IMasterChef(MASTERCHEF).withdraw(POOL_ID, amount);
     }
 
-    function _claimRewards() internal returns (uint256 rewards) {
-        uint256 s1 = IERC20(SUSHI).balanceOf(address(this));
+    function _claimRewards() internal {
         IMasterChef(MASTERCHEF).deposit(POOL_ID, 0);
-        uint256 s2 = IERC20(SUSHI).balanceOf(address(this));
-        return s2.sub(s1);
     }
 }

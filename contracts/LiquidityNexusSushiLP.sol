@@ -12,16 +12,23 @@ contract LiquidityNexusSushiLP is ERC20("LiquidityNexusSushiLP", "LNSLP"), Rebal
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
-    event Mint(address indexed sender, uint256 amountUSDC, uint256 amountETH);
-    event Burn(address indexed sender, uint256 amountUSDC, uint256 amountETH, address indexed to);
+    event Mint(address indexed sender, uint256 amountUSDC, uint256 amountETH, uint256 liquidity, uint256 shares);
+    event Burn(
+        address indexed sender,
+        uint256 amountUSDC,
+        uint256 amountETH,
+        uint256 liquidity,
+        uint256 shares,
+        address indexed to
+    );
 
     struct Minter {
         uint256 entryETH;
         uint256 entryUSDC;
-        uint256 liquidity;
+        uint256 shares;
     }
 
-    uint256 public totalLiquidity;
+    uint256 public totalLiquidity; // TODO instead of maintaining this accumulator, maybe better to balanceOf + masterChef.amount?
     uint256 public totalInvestedUSDC;
     uint256 public totalInvestedETH;
     mapping(address => Minter) public minters;
@@ -34,7 +41,7 @@ contract LiquidityNexusSushiLP is ERC20("LiquidityNexusSushiLP", "LNSLP"), Rebal
         returns (
             uint256 addedUSDC,
             uint256 addedETH,
-            uint256 liquidity
+            uint256 shares
         )
     {
         uint256 amountETH = msg.value;
@@ -49,31 +56,31 @@ contract LiquidityNexusSushiLP is ERC20("LiquidityNexusSushiLP", "LNSLP"), Rebal
         returns (
             uint256 addedUSDC,
             uint256 addedETH,
-            uint256 liquidity
+            uint256 shares
         )
     {
         IERC20(WETH).safeTransferFrom(msg.sender, address(this), amountETH);
         return _depositETH(amountETH, deadline);
     }
 
-    function removeLiquidityETH(uint256 liquidity, uint256 deadline)
+    function removeLiquidityETH(uint256 shares, uint256 deadline)
         external
         nonReentrant
         whenNotPaused
         returns (uint256 exitETH)
     {
-        exitETH = _withdrawETH(liquidity, deadline);
+        exitETH = _withdrawETH(shares, deadline);
         IWETH(WETH).withdraw(exitETH);
         msg.sender.transfer(exitETH);
     }
 
-    function removeLiquidity(uint256 liquidity, uint256 deadline)
+    function removeLiquidity(uint256 shares, uint256 deadline)
         external
         nonReentrant
         whenNotPaused
         returns (uint256 exitETH)
     {
-        exitETH = _withdrawETH(liquidity, deadline);
+        exitETH = _withdrawETH(shares, deadline);
         IERC20(WETH).safeTransfer(msg.sender, exitETH);
     }
 
@@ -88,8 +95,33 @@ contract LiquidityNexusSushiLP is ERC20("LiquidityNexusSushiLP", "LNSLP"), Rebal
         msg.sender.transfer(exitETH);
     }
 
-    function claimRewards() external nonReentrant whenNotPaused returns (uint256 rewards) {
-        return _claimRewards();
+    function claimRewards() external nonReentrant whenNotPaused onlyGovernance {
+        _claimRewards();
+        IERC20(SUSHI).safeTransfer(msg.sender, IERC20(SUSHI).balanceOf(address(this)));
+    }
+
+    function compoundProfits()
+        external
+        nonReentrant
+        whenNotPaused
+        onlyGovernance
+        returns (
+            uint256 addedUSDC,
+            uint256 addedETH,
+            uint256 liquidity
+        )
+    {
+        uint256 eth = IERC20(WETH).balanceOf(address(this));
+        require(eth > 1000, "minimum 1000");
+        _swapExactETHForUSDC(eth.div(2));
+        eth = IERC20(WETH).balanceOf(address(this));
+
+        (addedUSDC, addedETH, liquidity) = _addLiquidity(eth, block.timestamp); // solhint-disable-line not-rely-on-time
+        totalInvestedUSDC = totalInvestedUSDC.add(addedUSDC);
+        totalInvestedETH = totalInvestedETH.add(addedETH);
+        totalLiquidity = totalLiquidity.add(liquidity);
+
+        _stake(liquidity);
     }
 
     function _depositETH(uint256 amountETH, uint256 deadline)
@@ -97,10 +129,17 @@ contract LiquidityNexusSushiLP is ERC20("LiquidityNexusSushiLP", "LNSLP"), Rebal
         returns (
             uint256 addedUSDC,
             uint256 addedETH,
-            uint256 liquidity
+            uint256 shares
         )
     {
+        uint256 liquidity;
         (addedUSDC, addedETH, liquidity) = _addLiquidity(amountETH, deadline);
+
+        if (totalSupply() == 0) {
+            shares = liquidity;
+        } else {
+            shares = liquidity.mul(totalSupply()).div(totalLiquidity);
+        }
 
         totalInvestedUSDC = totalInvestedUSDC.add(addedUSDC);
         totalInvestedETH = totalInvestedETH.add(addedETH);
@@ -109,39 +148,42 @@ contract LiquidityNexusSushiLP is ERC20("LiquidityNexusSushiLP", "LNSLP"), Rebal
         Minter storage minter = minters[msg.sender];
         minter.entryUSDC = minter.entryUSDC.add(addedUSDC);
         minter.entryETH = minter.entryETH.add(addedETH);
-        minter.liquidity = minter.liquidity.add(liquidity);
+        minter.shares = minter.shares.add(shares);
 
-        _mint(msg.sender, liquidity);
+        _mint(msg.sender, shares);
+
+        emit Mint(msg.sender, addedUSDC, addedETH, liquidity, shares);
 
         _stake(liquidity);
-
-        emit Mint(msg.sender, addedUSDC, addedETH);
     }
 
-    function _withdrawETH(uint256 liquidity, uint256 deadline) internal returns (uint256 exitETH) {
+    function _withdrawETH(uint256 shares, uint256 deadline) internal returns (uint256 exitETH) {
         Minter storage minter = minters[msg.sender];
-        liquidity = Math.min(liquidity, minter.liquidity);
-        require(liquidity > 0, "sender not in minters");
+        shares = Math.min(shares, minter.shares);
+        require(shares > 0, "sender not in minters");
 
-        _burn(msg.sender, liquidity);
+        uint256 liquidity = shares.mul(totalLiquidity).div(totalSupply());
+
+        _burn(msg.sender, shares);
+
         _unstake(liquidity);
 
         (uint256 removedETH, uint256 removedUSDC) = _removeLiquidity(liquidity, deadline);
 
-        uint256 entryUSDC = minter.entryUSDC.mul(liquidity).div(minter.liquidity);
-        uint256 entryETH = minter.entryETH.mul(liquidity).div(minter.liquidity);
+        uint256 entryUSDC = minter.entryUSDC.mul(shares).div(minter.shares);
+        uint256 entryETH = minter.entryETH.mul(shares).div(minter.shares);
         uint256 exitUSDC;
         (exitUSDC, exitETH) = applyRebalance(removedUSDC, removedETH, entryUSDC, entryETH);
 
         minter.entryUSDC = minter.entryUSDC.sub(entryUSDC);
         minter.entryETH = minter.entryETH.sub(entryETH);
-        minter.liquidity = minter.liquidity.sub(liquidity);
+        minter.shares = minter.shares.sub(shares);
 
         totalInvestedUSDC = totalInvestedUSDC.sub(entryUSDC);
         totalInvestedETH = totalInvestedETH.sub(entryETH);
         totalLiquidity = totalLiquidity.sub(liquidity);
 
-        emit Burn(msg.sender, exitUSDC, exitETH, msg.sender);
+        emit Burn(msg.sender, exitUSDC, exitETH, liquidity, shares, msg.sender);
     }
 
     function emergencyExit() external onlyOwner {

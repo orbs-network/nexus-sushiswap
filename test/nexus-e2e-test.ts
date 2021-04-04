@@ -59,7 +59,7 @@ describe("LiquidityNexus with Sushiswap single sided ETH/USDC e2e", () => {
     expect(account.entryUSDC).not.bignumber.zero;
     expect(await nexus.methods.totalSupply().call())
       .bignumber.eq(await nexus.methods.totalLiquidity().call())
-      .bignumber.eq(account.liquidity);
+      .bignumber.eq(account.shares);
 
     await nexus.methods.removeAllLiquidityETH().send({ from: user.address });
     expect(await user.getBalance()).bignumber.closeTo(startBalance, bn18("0.1"));
@@ -68,7 +68,7 @@ describe("LiquidityNexus with Sushiswap single sided ETH/USDC e2e", () => {
     account = await nexus.methods.minters(user.address).call();
     expect(account.entryETH).bignumber.zero;
     expect(account.entryUSDC).bignumber.zero;
-    expect(account.liquidity).bignumber.zero;
+    expect(account.shares).bignumber.zero;
 
     expect(await balanceETH()).bignumber.zero;
     expect(await balanceUSDC()).bignumber.eq(startNexusBalanceUSDC);
@@ -90,7 +90,7 @@ describe("LiquidityNexus with Sushiswap single sided ETH/USDC e2e", () => {
 
   it("gracefully handle invalid input shares", async () => {
     await nexus.methods.addLiquidityETH(many).send({ value: bn18("10") });
-    const shares = bn((await nexus.methods.minters(deployer).call()).liquidity);
+    const shares = bn((await nexus.methods.minters(deployer).call()).shares);
     await nexus.methods.removeLiquidityETH(shares.muln(10), many).send();
 
     expect(await balanceETH(deployer)).bignumber.closeTo(startDeployerBalanceETH, ether);
@@ -129,7 +129,7 @@ describe("LiquidityNexus with Sushiswap single sided ETH/USDC e2e", () => {
       const ethInvested = startDeployerBalanceETH.sub(await balanceETH(deployer));
       expect(ethInvested).bignumber.closeTo(bn18("200"), bn18("0.01"));
 
-      const shares0 = bn((await nexus.methods.minters(deployer).call()).liquidity);
+      const shares0 = bn((await nexus.methods.minters(deployer).call()).shares);
       expect(await nexus.methods.removeLiquidityETH(shares0.divn(2), many).call()).bignumber.closeTo(
         bn18("98.3"),
         bn18("0.1")
@@ -140,8 +140,8 @@ describe("LiquidityNexus with Sushiswap single sided ETH/USDC e2e", () => {
       await nexus.methods.removeAllLiquidityETH().send();
       expect(await balanceETH(deployer)).bignumber.closeTo(startDeployerBalanceETH.sub(bn18("4")), bn18("1")); // from IL + gas
 
-      const { entryETH, entryUSDC, liquidity } = await nexus.methods.minters(deployer).call();
-      expect(liquidity).bignumber.zero;
+      const { entryETH, entryUSDC, shares } = await nexus.methods.minters(deployer).call();
+      expect(shares).bignumber.zero;
       expect(entryETH).bignumber.zero;
       expect(entryUSDC).bignumber.zero;
       expect(await totalInvestedUSDC()).bignumber.zero;
@@ -272,22 +272,16 @@ describe("LiquidityNexus with Sushiswap single sided ETH/USDC e2e", () => {
 
   describe("auto staking", () => {
     it("stake in addLiquidity, claim rewards in SUHI, unstake in removeLiquidity", async () => {
-      expect(await nexus.methods.claimRewards().call()).bignumber.zero;
+      expect(await Tokens.eth.SUSHI().methods.balanceOf(deployer).call()).bignumber.zero;
       await advanceTime(60 * 60 * 24); // 1 day
-      expect(await nexus.methods.claimRewards().call()).bignumber.zero;
+      expect(await Tokens.eth.SUSHI().methods.balanceOf(deployer).call()).bignumber.zero;
 
       await nexus.methods.addLiquidityETH(many).send({ value: bn18("100") });
 
       await advanceTime(60 * 60 * 24); // 1 day
-      expect(await nexus.methods.claimRewards().call()).bignumber.greaterThan(zero);
-
       await nexus.methods.claimRewards().send();
-      expect(await nexus.methods.claimRewards().call()).bignumber.zero;
 
-      await nexus.methods.removeAllLiquidityETH().send();
-      expect(await nexus.methods.claimRewards().call()).bignumber.zero;
+      expect(await Tokens.eth.SUSHI().methods.balanceOf(deployer).call()).bignumber.greaterThan(zero);
     });
   });
-
-  describe("comoundProfits", async () => {});
 });
