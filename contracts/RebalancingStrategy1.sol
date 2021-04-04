@@ -19,12 +19,12 @@ contract RebalancingStrategy1 is SushiswapIntegration {
     ) internal returns (uint256 exitUSDC, uint256 exitETH) {
         if (removedUSDC > entryUSDC) {
             uint256 deltaUSDC = removedUSDC.sub(entryUSDC);
-            exitETH = removedETH.add(_swapExactUSDCForETH(deltaUSDC));
+            exitETH = removedETH.add(_sushiSwapExactUSDCForETH(deltaUSDC));
             exitUSDC = entryUSDC;
         } else {
             uint256 deltaUSDC = entryUSDC.sub(removedUSDC);
             uint256 deltaETH = Math.min(removedETH, amountInETHForRequestedOutUSDC(deltaUSDC));
-            exitUSDC = removedUSDC.add(_swapExactETHForUSDC(deltaETH));
+            exitUSDC = removedUSDC.add(_sushiSwapExactETHForUSDC(deltaETH));
             exitETH = removedETH.sub(deltaETH);
         }
     }

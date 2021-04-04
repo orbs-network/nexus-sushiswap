@@ -96,7 +96,7 @@ contract LiquidityNexusSushiLP is ERC20("LiquidityNexusSushiLP", "LNSLP"), Rebal
     }
 
     function claimRewards() external nonReentrant whenNotPaused onlyGovernance {
-        _claimRewards();
+        _sushiClaimRewards();
         IERC20(SUSHI).safeTransfer(msg.sender, IERC20(SUSHI).balanceOf(address(this)));
     }
 
@@ -113,15 +113,13 @@ contract LiquidityNexusSushiLP is ERC20("LiquidityNexusSushiLP", "LNSLP"), Rebal
     {
         uint256 eth = IERC20(WETH).balanceOf(address(this));
         require(eth > 1000, "minimum 1000");
-        _swapExactETHForUSDC(eth.div(2));
+        _sushiSwapExactETHForUSDC(eth.div(2));
         eth = IERC20(WETH).balanceOf(address(this));
 
-        (addedUSDC, addedETH, liquidity) = _addLiquidity(eth, block.timestamp); // solhint-disable-line not-rely-on-time
+        (addedUSDC, addedETH, liquidity) = _sushiAddLiquidity(eth, block.timestamp); // solhint-disable-line not-rely-on-time
         totalInvestedUSDC = totalInvestedUSDC.add(addedUSDC);
         totalInvestedETH = totalInvestedETH.add(addedETH);
         totalLiquidity = totalLiquidity.add(liquidity);
-
-        _stake(liquidity);
     }
 
     function _depositETH(uint256 amountETH, uint256 deadline)
@@ -133,7 +131,7 @@ contract LiquidityNexusSushiLP is ERC20("LiquidityNexusSushiLP", "LNSLP"), Rebal
         )
     {
         uint256 liquidity;
-        (addedUSDC, addedETH, liquidity) = _addLiquidity(amountETH, deadline);
+        (addedUSDC, addedETH, liquidity) = _sushiAddLiquidity(amountETH, deadline);
 
         if (totalSupply() == 0) {
             shares = liquidity;
@@ -153,8 +151,6 @@ contract LiquidityNexusSushiLP is ERC20("LiquidityNexusSushiLP", "LNSLP"), Rebal
         _mint(msg.sender, shares);
 
         emit Mint(msg.sender, addedUSDC, addedETH, liquidity, shares);
-
-        _stake(liquidity);
     }
 
     function _withdrawETH(uint256 shares, uint256 deadline) internal returns (uint256 exitETH) {
@@ -166,9 +162,7 @@ contract LiquidityNexusSushiLP is ERC20("LiquidityNexusSushiLP", "LNSLP"), Rebal
 
         _burn(msg.sender, shares);
 
-        _unstake(liquidity);
-
-        (uint256 removedETH, uint256 removedUSDC) = _removeLiquidity(liquidity, deadline);
+        (uint256 removedETH, uint256 removedUSDC) = _sushiRemoveLiquidity(liquidity, deadline);
 
         uint256 entryUSDC = minter.entryUSDC.mul(shares).div(minter.shares);
         uint256 entryETH = minter.entryETH.mul(shares).div(minter.shares);
@@ -187,7 +181,7 @@ contract LiquidityNexusSushiLP is ERC20("LiquidityNexusSushiLP", "LNSLP"), Rebal
     }
 
     function emergencyExit() external onlyOwner {
-        _removeLiquidity(totalLiquidity, block.timestamp); // solhint-disable-line not-rely-on-time
+        _sushiRemoveLiquidity(totalLiquidity, block.timestamp); // solhint-disable-line not-rely-on-time
         withdrawFreeCapital();
         totalLiquidity = 0;
         totalInvestedUSDC = 0;

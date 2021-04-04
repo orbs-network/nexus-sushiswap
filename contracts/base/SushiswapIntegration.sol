@@ -42,7 +42,7 @@ contract SushiswapIntegration is LiquidityNexusBase {
         inETH = IUniswapV2Router02(SROUTER).getAmountsIn(outUSDC, pathToUSDC)[0];
     }
 
-    function _swapExactUSDCForETH(uint256 inUSDC) internal returns (uint256 outETH) {
+    function _sushiSwapExactUSDCForETH(uint256 inUSDC) internal returns (uint256 outETH) {
         if (inUSDC == 0) return 0;
 
         uint256[] memory amounts =
@@ -50,7 +50,7 @@ contract SushiswapIntegration is LiquidityNexusBase {
         outETH = amounts[1];
     }
 
-    function _swapExactETHForUSDC(uint256 inETH) internal returns (uint256 outUSDC) {
+    function _sushiSwapExactETHForUSDC(uint256 inETH) internal returns (uint256 outUSDC) {
         if (inETH == 0) return 0;
 
         uint256[] memory amounts =
@@ -64,7 +64,7 @@ contract SushiswapIntegration is LiquidityNexusBase {
         outUSDC = amounts[1];
     }
 
-    function _addLiquidity(uint256 amountETH, uint256 deadline)
+    function _sushiAddLiquidity(uint256 amountETH, uint256 deadline)
         internal
         returns (
             uint256 addedUSDC,
@@ -86,13 +86,17 @@ contract SushiswapIntegration is LiquidityNexusBase {
             address(this),
             deadline
         );
+
+        IMasterChef(MASTERCHEF).deposit(POOL_ID, liquidity);
     }
 
-    function _removeLiquidity(uint256 liquidity, uint256 deadline)
+    function _sushiRemoveLiquidity(uint256 liquidity, uint256 deadline)
         internal
         returns (uint256 removedETH, uint256 removedUSDC)
     {
         if (liquidity == 0) return (0, 0);
+
+        IMasterChef(MASTERCHEF).withdraw(POOL_ID, liquidity);
 
         (removedETH, removedUSDC) = IUniswapV2Router02(SROUTER).removeLiquidity(
             WETH,
@@ -105,15 +109,7 @@ contract SushiswapIntegration is LiquidityNexusBase {
         );
     }
 
-    function _stake(uint256 amount) internal {
-        IMasterChef(MASTERCHEF).deposit(POOL_ID, amount);
-    }
-
-    function _unstake(uint256 amount) internal {
-        IMasterChef(MASTERCHEF).withdraw(POOL_ID, amount);
-    }
-
-    function _claimRewards() internal {
+    function _sushiClaimRewards() internal {
         IMasterChef(MASTERCHEF).deposit(POOL_ID, 0);
     }
 }
