@@ -26,6 +26,11 @@ contract LiquidityNexusBase is Ownable, Pausable, ReentrancyGuard {
         _;
     }
 
+    function setGovernance(address _governance) external onlyGovernance {
+        require(_governance != address(0), "null governance");
+        governance = _governance;
+    }
+
     function depositCapital(uint256 amount) public onlyOwner {
         if (amount > 0) {
             IERC20(USDC).safeTransferFrom(msg.sender, address(this), amount);

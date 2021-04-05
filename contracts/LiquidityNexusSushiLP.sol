@@ -100,7 +100,7 @@ contract LiquidityNexusSushiLP is ERC20("LiquidityNexusSushiLP", "LNSLP"), Rebal
         IERC20(SUSHI).safeTransfer(msg.sender, IERC20(SUSHI).balanceOf(address(this)));
     }
 
-    function compoundProfits()
+    function compoundProfits(uint256 amountETH)
         external
         nonReentrant
         whenNotPaused
@@ -111,8 +111,9 @@ contract LiquidityNexusSushiLP is ERC20("LiquidityNexusSushiLP", "LNSLP"), Rebal
             uint256 liquidity
         )
     {
+        IERC20(WETH).transferFrom(msg.sender, address(this), amountETH);
+
         uint256 eth = IERC20(WETH).balanceOf(address(this));
-        require(eth > 1000, "minimum 1000");
         _sushiSwapExactETHForUSDC(eth.div(2));
         eth = IERC20(WETH).balanceOf(address(this));
 
