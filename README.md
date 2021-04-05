@@ -1,5 +1,5 @@
 # LiquidityNexus Single Sided Liquidity Provision
-> On Sushiswap ETH/USDC pair + Sushi Masterchef staking
+> Auto Rebalancing, using Sushiswap ETH/USDC pair + Sushi Masterchef staking
 
 ### Background
 
@@ -12,7 +12,7 @@
 * Accepts ETH (or WETH) from user
     * Joins both sides to provide liquidity on Sushiswap ETH/USDC pair
     * Auto stakes the resulting SLP into Sushi MasterChef
-    * Mints shares (LNSLP) for user as beneficiery
+    * Mints shares (LNSLP) for user
     * User can withdraw at any time, no entry or exit fees
 * Allows governance to claim rewards
     * Rewards will be auto liquidated by governance
