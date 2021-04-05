@@ -1,5 +1,5 @@
-import { web3 } from "../network";
-import { bn } from "../utils";
+import { web3 } from "./network";
+import { bn } from "./utils";
 
 export class Wallet {
   static async fake(index: number = 0) {

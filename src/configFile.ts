@@ -1,17 +1,15 @@
 import fs from "fs";
 import path from "path";
 
-export function config() {
-  const p = process.env.npm_package_config_file || "";
+export function configFile() {
+  const p = process.env.npm_package_config_file!!;
   if (!fs.existsSync(p)) {
     fs.writeFileSync(
       p,
       JSON.stringify(
         {
-          coinmarketcapKey: "APIKEY",
-          infuraKey: "APIKEY",
           alchemyKey: "APIKEY",
-          etherscanKey: "APIKEY",
+          coinmarketcapKey: "APIKEY",
         },
         null,
         4

@@ -1,7 +1,7 @@
-import { contract } from "../extensions";
-import { ERC20 } from "../../typechain-hardhat/ERC20";
+import { contract } from "./extensions";
+import { ERC20 } from "../typechain-hardhat/ERC20";
 
-const abi = require("../../artifacts/@openzeppelin/contracts/token/ERC20/ERC20.sol/ERC20.json").abi;
+const abi = require("../artifacts/@openzeppelin/contracts/token/ERC20/ERC20.sol/ERC20.json").abi;
 
 export namespace Tokens {
   export namespace eth {
@@ -11,10 +11,6 @@ export namespace Tokens {
 
     export function USDC() {
       return newToken("$USDC", "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48");
-    }
-
-    export function USDT() {
-      return newToken("$USDT", "0xdAC17F958D2ee523a2206206994597C13D831ec7");
     }
 
     export function SUSHI() {

@@ -28,7 +28,7 @@ contract LiquidityNexusSushiLP is ERC20("LiquidityNexusSushiLP", "LNSLP"), Rebal
         uint256 shares;
     }
 
-    uint256 public totalLiquidity; // TODO instead of maintaining this accumulator, maybe better to balanceOf + masterChef.amount?
+    uint256 public totalLiquidity;
     uint256 public totalInvestedUSDC;
     uint256 public totalInvestedETH;
     mapping(address => Minter) public minters;
@@ -116,7 +116,7 @@ contract LiquidityNexusSushiLP is ERC20("LiquidityNexusSushiLP", "LNSLP"), Rebal
         _sushiSwapExactETHForUSDC(eth.div(2));
         eth = IERC20(WETH).balanceOf(address(this));
 
-        (addedUSDC, addedETH, liquidity) = _sushiAddLiquidity(eth, block.timestamp); // solhint-disable-line not-rely-on-time
+        (addedUSDC, addedETH, liquidity) = _sushiAddLiquidityAndStake(eth, block.timestamp); // solhint-disable-line not-rely-on-time
         totalInvestedUSDC = totalInvestedUSDC.add(addedUSDC);
         totalInvestedETH = totalInvestedETH.add(addedETH);
         totalLiquidity = totalLiquidity.add(liquidity);
@@ -131,7 +131,7 @@ contract LiquidityNexusSushiLP is ERC20("LiquidityNexusSushiLP", "LNSLP"), Rebal
         )
     {
         uint256 liquidity;
-        (addedUSDC, addedETH, liquidity) = _sushiAddLiquidity(amountETH, deadline);
+        (addedUSDC, addedETH, liquidity) = _sushiAddLiquidityAndStake(amountETH, deadline);
 
         if (totalSupply() == 0) {
             shares = liquidity;
@@ -162,7 +162,7 @@ contract LiquidityNexusSushiLP is ERC20("LiquidityNexusSushiLP", "LNSLP"), Rebal
 
         _burn(msg.sender, shares);
 
-        (uint256 removedETH, uint256 removedUSDC) = _sushiRemoveLiquidity(liquidity, deadline);
+        (uint256 removedETH, uint256 removedUSDC) = _sushiUnstakeAndRemoveLiquidity(liquidity, deadline);
 
         uint256 entryUSDC = minter.entryUSDC.mul(shares).div(minter.shares);
         uint256 entryETH = minter.entryETH.mul(shares).div(minter.shares);
@@ -181,7 +181,7 @@ contract LiquidityNexusSushiLP is ERC20("LiquidityNexusSushiLP", "LNSLP"), Rebal
     }
 
     function emergencyExit() external onlyOwner {
-        _sushiRemoveLiquidity(totalLiquidity, block.timestamp); // solhint-disable-line not-rely-on-time
+        _sushiUnstakeAndRemoveLiquidity(totalLiquidity, block.timestamp); // solhint-disable-line not-rely-on-time
         withdrawFreeCapital();
         totalLiquidity = 0;
         totalInvestedUSDC = 0;

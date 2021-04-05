@@ -3,8 +3,7 @@ import "hardhat-typechain";
 import "hardhat-gas-reporter";
 import "@nomiclabs/hardhat-web3";
 import { task } from "hardhat/config";
-import { alchemyUrl, bscChainId, bscRpcUrls, coinmarketcapKey, ethChainId, ethRpcUrls } from "./src/consts";
-import { random } from "./src/utils";
+import { configFile } from "./src/configFile";
 
 task("start", "").setAction(async () => {});
 
@@ -23,25 +22,9 @@ const config: HardhatUserConfig = {
     hardhat: {
       forking: {
         blockNumber: 12080000,
-        url: alchemyUrl,
+        url: "https://eth-mainnet.alchemyapi.io/v2/" + configFile().alchemyKey,
       },
       blockGasLimit: 12e6,
-    },
-    bsc: {
-      chainId: bscChainId,
-      url: random(bscRpcUrls),
-      timeout: 120_000,
-      httpHeaders: {
-        keepAlive: "true",
-      },
-    },
-    eth: {
-      chainId: ethChainId,
-      url: random(ethRpcUrls),
-      timeout: 120_000,
-      httpHeaders: {
-        keepAlive: "true",
-      },
     },
   },
   typechain: {
@@ -50,10 +33,11 @@ const config: HardhatUserConfig = {
   },
   mocha: {
     timeout: 240_000,
+    retries: 3,
   },
   gasReporter: {
     currency: "USD",
-    coinmarketcap: coinmarketcapKey,
+    coinmarketcap: configFile().coinmarketcapKey,
     showTimeSpent: true,
   },
 };

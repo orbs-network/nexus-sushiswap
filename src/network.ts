@@ -1,6 +1,4 @@
-import { bscChainId, bscRpcUrls, ethChainId, etherscanKey, ethRpcUrls } from "./consts";
 import _ from "lodash";
-import fetch from "node-fetch";
 import { Artifact } from "hardhat/types";
 
 function hre() {
@@ -19,32 +17,13 @@ export function artifact(name: string): Artifact {
   return hre().artifacts.readArtifactSync(name);
 }
 
-export async function block(timestampMillis?: number): Promise<number> {
-  const current: number = await web3().eth.getBlockNumber();
-  if (!timestampMillis) return current;
-  if (onBinanceSmartChain()) {
-    const diffMillis = Date.now() - timestampMillis;
-    const diffBlocks = _.round(diffMillis / 1000 / 3);
-    return current - diffBlocks;
-  } else {
-    return etherscanBlockForTimestamp(timestampMillis);
-  }
-}
-
-async function etherscanBlockForTimestamp(timestampMillis: number) {
-  const seconds = _.round(timestampMillis / 1000);
-  const url = `https://api.etherscan.io/api?module=block&action=getblocknobytime&timestamp=${seconds}&closest=before&apikey=${etherscanKey}`;
-  const response = await fetch(url);
-  const json = await response.json();
-  return parseInt(json.result);
-}
-
 export async function impersonate(address: string) {
   console.log("impersonating", address);
   await network().provider.send("hardhat_impersonateAccount", [address]);
 }
 
 export async function resetFakeNetworkFork(blockNumber: number = forkingBlockNumber()) {
+  console.log("resetFakeNetworkFork");
   await network().provider.send("hardhat_reset", [
     {
       forking: {
@@ -53,26 +32,14 @@ export async function resetFakeNetworkFork(blockNumber: number = forkingBlockNum
       },
     },
   ]);
-  console.log("block", await block());
+  console.log("block", await web3().eth.getBlockNumber());
 }
 
 export async function advanceTime(seconds: number) {
-  const b = await block();
+  const b = await web3().eth.getBlockNumber();
   console.log(`advancing time by ${seconds} seconds`);
   await network().provider.send("evm_increaseTime", [seconds]);
   await network().provider.send("evm_mine", [(await web3().eth.getBlock(b)).timestamp + seconds]);
-}
-
-export function onFakeNetwork() {
-  return network().config.chainId == hre().config.networks.hardhat.chainId;
-}
-
-export function onBinanceSmartChain() {
-  return network().name == "bsc" || network().config.chainId == bscChainId || bscRpcUrls.includes(forkingUrl());
-}
-
-export function onEthereum() {
-  return network().name == "eth" || network().config.chainId == ethChainId || ethRpcUrls.includes(forkingUrl());
 }
 
 function forkingBlockNumber() {

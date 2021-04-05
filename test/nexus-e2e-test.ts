@@ -1,20 +1,20 @@
-import { Wallet } from "../src/impl/wallet";
+import { Wallet } from "../src/wallet";
 import { expect } from "chai";
-import { Tokens } from "../src/impl/token";
+import { Tokens } from "../src/token";
 import { bn, bn18, bn6, ether, many, zero } from "../src/utils";
 import {
-  deployer,
   balanceETH,
+  balanceUSDC,
   changeEthPrice,
+  deployer,
+  expectRevert,
   nexus,
+  simulateInterestAccumulation,
   startDeployerBalanceETH,
   startNexusBalanceUSDC,
   startPrice,
   totalInvestedUSDC,
-  balanceUSDC,
-  simulateInterestAccumulation,
-} from "./test-e2e-base";
-import { expectRevert } from "./test-utils";
+} from "./nexus-e2e-base";
 import { advanceTime } from "../src/network";
 
 describe("LiquidityNexus with Sushiswap single sided ETH/USDC e2e", () => {
@@ -271,16 +271,19 @@ describe("LiquidityNexus with Sushiswap single sided ETH/USDC e2e", () => {
   });
 
   describe("auto staking", () => {
-    it("stake in addLiquidity, claim rewards in SUHI, unstake in removeLiquidity", async () => {
+    it("stake in addLiquidity, claim rewards in SUSHI, unstake in removeLiquidity", async () => {
       expect(await Tokens.eth.SUSHI().methods.balanceOf(deployer).call()).bignumber.zero;
-      await advanceTime(60 * 60 * 24); // 1 day
-      expect(await Tokens.eth.SUSHI().methods.balanceOf(deployer).call()).bignumber.zero;
-
-      await nexus.methods.addLiquidityETH(many).send({ value: bn18("100") });
-
+      await nexus.methods.addLiquidityETH(many).send({ value: ether });
       await advanceTime(60 * 60 * 24); // 1 day
       await nexus.methods.claimRewards().send();
+      expect(await Tokens.eth.SUSHI().methods.balanceOf(deployer).call()).bignumber.greaterThan(zero);
+    });
 
+    it("compoundProfits ", async () => {
+      expect(await Tokens.eth.SUSHI().methods.balanceOf(deployer).call()).bignumber.zero;
+      await nexus.methods.addLiquidityETH(many).send({ value: ether });
+      await advanceTime(60 * 60 * 24); // 1 day
+      await nexus.methods.claimRewards().send();
       expect(await Tokens.eth.SUSHI().methods.balanceOf(deployer).call()).bignumber.greaterThan(zero);
     });
   });

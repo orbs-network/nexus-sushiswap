@@ -3,10 +3,11 @@ import { bn, bn6, ether, many } from "../src/utils";
 import { IUniswapV2Pair } from "../typechain-hardhat/IUniswapV2Pair";
 import { contract, deployContract } from "../src/extensions";
 import { impersonate, resetFakeNetworkFork, web3 } from "../src/network";
-import { Tokens } from "../src/impl/token";
+import { Tokens } from "../src/token";
 import { IUniswapV2Router02 } from "../typechain-hardhat/IUniswapV2Router02";
-import { Wallet } from "../src/impl/wallet";
+import { Wallet } from "../src/wallet";
 import { LiquidityNexusSushiLP } from "../typechain-hardhat/LiquidityNexusSushiLP";
+import { expect } from "chai";
 
 const usdcWhale = "0xBE0eB53F46cd790Cd13851d5EFf43D12404d33E8"; // binance7
 
@@ -20,6 +21,16 @@ export let startPrice: BN;
  * test case state init
  */
 beforeEach(async () => {
+  while (true) {
+    try {
+      return await doBeforeEach();
+    } catch (e) {
+      console.log("failed, trying again", e);
+    }
+  }
+});
+
+async function doBeforeEach() {
   await resetFakeNetworkFork();
   await impersonate(usdcWhale);
   const wallet = await Wallet.fake();
@@ -33,7 +44,7 @@ beforeEach(async () => {
     balanceUSDC(),
     quote(),
   ]);
-});
+}
 
 /**
  * @returns eth price quote in usd, from nexus contract
@@ -134,4 +145,14 @@ async function computeUsdDeltaForTargetPrice(targetPrice: BN) {
   const nTargetPrice = targetPrice.divn(1e6).toNumber();
   const targetUsdReserve = Math.sqrt(nTargetPrice * rEth * rUsd);
   return bn(Math.abs(targetUsdReserve - rUsd) * 1e6);
+}
+
+export async function expectRevert(fn: () => any) {
+  let err: Error | null = null;
+  try {
+    await fn();
+  } catch (e) {
+    err = e;
+  }
+  expect(!!err, "expected to revert").true;
 }

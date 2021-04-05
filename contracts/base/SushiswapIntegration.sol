@@ -64,7 +64,7 @@ contract SushiswapIntegration is LiquidityNexusBase {
         outUSDC = amounts[1];
     }
 
-    function _sushiAddLiquidity(uint256 amountETH, uint256 deadline)
+    function _sushiAddLiquidityAndStake(uint256 amountETH, uint256 deadline)
         internal
         returns (
             uint256 addedUSDC,
@@ -90,7 +90,7 @@ contract SushiswapIntegration is LiquidityNexusBase {
         IMasterChef(MASTERCHEF).deposit(POOL_ID, liquidity);
     }
 
-    function _sushiRemoveLiquidity(uint256 liquidity, uint256 deadline)
+    function _sushiUnstakeAndRemoveLiquidity(uint256 liquidity, uint256 deadline)
         internal
         returns (uint256 removedETH, uint256 removedUSDC)
     {
