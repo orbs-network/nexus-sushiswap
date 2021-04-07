@@ -13,17 +13,17 @@ contract NexusLPSushi is ERC20("Nexus LP SushiSwap ETH/USDC", "NSLP"), Rebalanci
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
-    event Mint(address indexed sender, address indexed to, uint256 liquidity, uint256 shares);
+    event Mint(address indexed sender, address indexed beneficiary, uint256 liquidity, uint256 shares);
     event Burn(
         address indexed sender,
-        address indexed to,
+        address indexed beneficiary,
         uint256 exitUSDC,
         uint256 exitETH,
         uint256 liquidity,
         uint256 shares
     );
-    event ClaimedRewards(address indexed sender, uint256 amount);
-    event CompoundedProfits(address indexed sender, uint256 liquidity);
+    event ClaimRewards(address indexed sender, uint256 amount);
+    event CompoundProfits(address indexed sender, uint256 liquidity);
 
     struct Minter {
         uint256 entryETH;
@@ -45,7 +45,7 @@ contract NexusLPSushi is ERC20("Nexus LP SushiSwap ETH/USDC", "NSLP"), Rebalanci
         return uint256(1e18).mul(totalLiquidity).div(totalSupply());
     }
 
-    function addLiquidityETH(address to, uint256 deadline)
+    function addLiquidityETH(address beneficiary, uint256 deadline)
         external
         payable
         nonReentrant
@@ -58,11 +58,11 @@ contract NexusLPSushi is ERC20("Nexus LP SushiSwap ETH/USDC", "NSLP"), Rebalanci
     {
         uint256 amountETH = msg.value;
         IWETH(WETH).deposit{value: amountETH}();
-        return _depositETH(to, amountETH, deadline);
+        return _depositETH(beneficiary, amountETH, deadline);
     }
 
     function addLiquidity(
-        address to,
+        address beneficiary,
         uint256 amountETH,
         uint256 deadline
     )
@@ -76,37 +76,41 @@ contract NexusLPSushi is ERC20("Nexus LP SushiSwap ETH/USDC", "NSLP"), Rebalanci
         )
     {
         IERC20(WETH).safeTransferFrom(msg.sender, address(this), amountETH);
-        return _depositETH(to, amountETH, deadline);
+        return _depositETH(beneficiary, amountETH, deadline);
     }
 
     function removeLiquidityETH(
-        address payable to,
+        address payable beneficiary,
         uint256 shares,
         uint256 deadline
     ) external nonReentrant returns (uint256 exitETH) {
-        exitETH = _withdrawETH(to, shares, deadline);
+        exitETH = _withdrawETH(beneficiary, shares, deadline);
         IWETH(WETH).withdraw(exitETH);
-        Address.sendValue(to, exitETH);
+        Address.sendValue(beneficiary, exitETH);
     }
 
     function removeLiquidity(
-        address to,
+        address beneficiary,
         uint256 shares,
         uint256 deadline
     ) external nonReentrant returns (uint256 exitETH) {
-        exitETH = _withdrawETH(to, shares, deadline);
-        IERC20(WETH).safeTransfer(to, exitETH);
+        exitETH = _withdrawETH(beneficiary, shares, deadline);
+        IERC20(WETH).safeTransfer(beneficiary, exitETH);
     }
 
-    function removeAllLiquidityETH(address payable to) external nonReentrant returns (uint256 exitETH) {
-        exitETH = _withdrawETH(to, balanceOf(msg.sender), block.timestamp); // solhint-disable-line not-rely-on-time
+    function removeAllLiquidityETH(address payable beneficiary, uint256 deadline)
+        external
+        nonReentrant
+        returns (uint256 exitETH)
+    {
+        exitETH = _withdrawETH(beneficiary, balanceOf(msg.sender), deadline);
         IWETH(WETH).withdraw(exitETH);
-        Address.sendValue(to, exitETH);
+        Address.sendValue(beneficiary, exitETH);
     }
 
-    function removeAllLiquidity(address to) external nonReentrant returns (uint256 exitETH) {
-        exitETH = _withdrawETH(to, balanceOf(msg.sender), block.timestamp); // solhint-disable-line not-rely-on-time
-        IERC20(WETH).safeTransfer(to, exitETH);
+    function removeAllLiquidity(address beneficiary, uint256 deadline) external nonReentrant returns (uint256 exitETH) {
+        exitETH = _withdrawETH(beneficiary, balanceOf(msg.sender), deadline);
+        IERC20(WETH).safeTransfer(beneficiary, exitETH);
     }
 
     function claimRewards() external nonReentrant onlyGovernance {
@@ -114,7 +118,7 @@ contract NexusLPSushi is ERC20("Nexus LP SushiSwap ETH/USDC", "NSLP"), Rebalanci
         uint256 amount = IERC20(REWARD).balanceOf(address(this));
         IERC20(REWARD).safeTransfer(msg.sender, amount);
 
-        emit ClaimedRewards(msg.sender, amount);
+        emit ClaimRewards(msg.sender, amount);
     }
 
     function compoundProfits(uint256 amountETH)
@@ -144,11 +148,11 @@ contract NexusLPSushi is ERC20("Nexus LP SushiSwap ETH/USDC", "NSLP"), Rebalanci
         totalInvestedETH = totalInvestedETH.add(addedETH);
         totalLiquidity = totalLiquidity.add(liquidity);
 
-        emit CompoundedProfits(msg.sender, liquidity);
+        emit CompoundProfits(msg.sender, liquidity);
     }
 
     function _depositETH(
-        address to,
+        address beneficiary,
         uint256 amountETH,
         uint256 deadline
     )
@@ -172,18 +176,18 @@ contract NexusLPSushi is ERC20("Nexus LP SushiSwap ETH/USDC", "NSLP"), Rebalanci
         totalInvestedETH = totalInvestedETH.add(addedETH);
         totalLiquidity = totalLiquidity.add(liquidity);
 
-        Minter storage minter = minters[to];
+        Minter storage minter = minters[beneficiary];
         minter.entryUSDC = minter.entryUSDC.add(addedUSDC);
         minter.entryETH = minter.entryETH.add(addedETH);
         minter.shares = minter.shares.add(shares);
 
-        _mint(to, shares);
+        _mint(beneficiary, shares);
 
-        emit Mint(msg.sender, to, liquidity, shares);
+        emit Mint(msg.sender, beneficiary, liquidity, shares);
     }
 
     function _withdrawETH(
-        address to,
+        address beneficiary,
         uint256 shares,
         uint256 deadline
     ) internal returns (uint256 exitETH) {
@@ -210,7 +214,7 @@ contract NexusLPSushi is ERC20("Nexus LP SushiSwap ETH/USDC", "NSLP"), Rebalanci
         totalInvestedETH = totalInvestedETH.sub(entryETH);
         totalLiquidity = totalLiquidity.sub(liquidity);
 
-        emit Burn(msg.sender, to, exitUSDC, exitETH, liquidity, shares);
+        emit Burn(msg.sender, beneficiary, exitUSDC, exitETH, liquidity, shares);
     }
 
     function emergencyExit() external onlyOwner {

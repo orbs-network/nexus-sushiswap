@@ -1,6 +1,7 @@
 import {
   balanceETH,
   balanceUSDC,
+  deadline,
   deployer,
   expectRevert,
   nexus,
@@ -38,9 +39,9 @@ describe("LiquidityNexus Security Tests", () => {
   });
 
   it("gracefully handle invalid input shares", async () => {
-    await nexus.methods.addLiquidityETH(deployer, many).send({ value: bn18("10") });
+    await nexus.methods.addLiquidityETH(deployer, deadline).send({ value: bn18("10") });
     const shares = bn((await nexus.methods.minters(deployer).call()).shares);
-    await nexus.methods.removeLiquidityETH(deployer, shares.muln(10), many).send(); // just ignore any shares above allocated, due to (for example) transfers
+    await nexus.methods.removeLiquidityETH(deployer, shares.muln(10), deadline).send(); // just ignore any shares above allocated, due to (for example) transfers
 
     expect(await balanceETH(deployer)).bignumber.closeTo(startDeployerBalanceETH, ether);
     expect(await balanceUSDC()).bignumber.eq(startNexusBalanceUSDC);
@@ -49,14 +50,14 @@ describe("LiquidityNexus Security Tests", () => {
   it("beneficiary != sender", async () => {
     const user = (await Wallet.fake(1)).address;
 
-    await nexus.methods.addLiquidityETH(user, many).send({ value: bn18("100"), from: deployer });
+    await nexus.methods.addLiquidityETH(user, deadline).send({ value: bn18("100"), from: deployer });
     expect((await nexus.methods.minters(user).call()).shares).bignumber.gt(zero);
     expect(await nexus.methods.balanceOf(user).call()).bignumber.gt(zero);
     expect(await nexus.methods.balanceOf(deployer).call()).bignumber.zero;
 
-    await expectRevert(() => nexus.methods.removeAllLiquidityETH(user).send()); // cant burn other's shares
+    await expectRevert(() => nexus.methods.removeAllLiquidityETH(user, deadline).send()); // cant burn other's shares
 
-    await nexus.methods.removeAllLiquidityETH(deployer).send({ from: user });
+    await nexus.methods.removeAllLiquidityETH(deployer, deadline).send({ from: user });
 
     expect(await balanceETH(deployer)).bignumber.closeTo(startDeployerBalanceETH, bn18("0.1"));
   });

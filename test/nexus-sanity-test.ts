@@ -2,16 +2,16 @@ import { expect } from "chai";
 import {
   balanceETH,
   balanceUSDC,
+  deadline,
   deployer,
   IWETHContract,
   nexus,
-  startDeployerBalanceETH,
   startNexusBalanceUSDC,
   startPrice,
   sushiEthUsdPair,
 } from "./test-base";
 import { Tokens } from "../src/token";
-import { bn, bn18, ether, many, zero } from "../src/utils";
+import { bn18, ether, many, zero } from "../src/utils";
 import _ from "lodash";
 import { parseEvents } from "../src/network";
 
@@ -37,13 +37,13 @@ describe("LiquidityNexus Sanity Tests", () => {
     await IWETHContract.methods.deposit().send({ value: availableSpaceForETH });
     await Tokens.WETH().methods.approve(nexus.options.address, availableSpaceForETH).send();
 
-    await nexus.methods.addLiquidity(deployer, availableSpaceForETH, many).send();
+    await nexus.methods.addLiquidity(deployer, availableSpaceForETH, deadline).send();
 
     expect(await balanceUSDC()).bignumber.closeTo(zero, "100"); // near zero
   });
 
   it("mint events", async () => {
-    const depositTx = await nexus.methods.addLiquidityETH(deployer, many).send({ value: bn18("10") });
+    const depositTx = await nexus.methods.addLiquidityETH(deployer, deadline).send({ value: bn18("10") });
     parseEvents(sushiEthUsdPair.options.jsonInterface, sushiEthUsdPair.options.address, depositTx);
 
     const mintEvents = _.get(depositTx.events, "Mint");
@@ -51,13 +51,13 @@ describe("LiquidityNexus Sanity Tests", () => {
     const poolMintEvent = _.find(mintEvents, (e) => e.address == sushiEthUsdPair.options.address);
     expect(poolMintEvent.returnValues["amount1"]).bignumber.eq(bn18("10"));
     const nexusMintEvent = _.find(mintEvents, (e) => e.address == nexus.options.address);
-    expect(nexusMintEvent.returnValues["to"]).eq(deployer);
+    expect(nexusMintEvent.returnValues["beneficiary"]).eq(deployer);
   });
 
   it("burn events", async () => {
-    await nexus.methods.addLiquidityETH(deployer, many).send({ value: bn18("10") });
+    await nexus.methods.addLiquidityETH(deployer, deadline).send({ value: bn18("10") });
 
-    const tx = await nexus.methods.removeAllLiquidity(deployer).send();
+    const tx = await nexus.methods.removeAllLiquidity(deployer, deadline).send();
     parseEvents(sushiEthUsdPair.options.jsonInterface, sushiEthUsdPair.options.address, tx);
 
     const burnEvents = _.get(tx.events, "Burn");
@@ -69,13 +69,13 @@ describe("LiquidityNexus Sanity Tests", () => {
     await Tokens.WETH().methods.approve(nexus.options.address, many).send();
 
     expect(await nexus.methods.pricePerFullShare().call()).bignumber.zero;
-    await nexus.methods.addLiquidity(deployer, bn18("10"), many).send();
+    await nexus.methods.addLiquidity(deployer, bn18("10"), deadline).send();
     expect(await nexus.methods.pricePerFullShare().call()).bignumber.eq(ether);
 
     await nexus.methods.compoundProfits(bn18("10")).send();
     expect(await nexus.methods.pricePerFullShare().call()).bignumber.closeTo(bn18("1.5"), bn18("0.1")); // 50% swapped for USDC, so +50% of pool
 
-    await nexus.methods.removeAllLiquidity(deployer).send();
+    await nexus.methods.removeAllLiquidity(deployer, deadline).send();
     expect(await nexus.methods.pricePerFullShare().call()).bignumber.zero;
   });
 

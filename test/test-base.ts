@@ -12,6 +12,7 @@ import { expect } from "chai";
 
 const usdcWhale = "0xBE0eB53F46cd790Cd13851d5EFf43D12404d33E8"; // binance7
 
+export const deadline = many;
 export let deployer: string;
 export let nexus: NexusLPSushi;
 export let startDeployerBalanceETH: BN;
