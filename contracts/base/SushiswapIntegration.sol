@@ -30,13 +30,24 @@ contract SushiswapIntegration is LiquidityNexusBase {
         IERC20(SLP).approve(MASTERCHEF, uint256(~0));
     }
 
+    /**
+     * returns price of ETH in USDC
+     */
     function quote(uint256 inETH) public view returns (uint256 outUSDC) {
         (uint112 rUSDC, uint112 rETH, ) = IUniswapV2Pair(SLP).getReserves();
         outUSDC = IUniswapV2Router02(ROUTER).quote(inETH, rETH, rUSDC);
     }
 
     /**
-     * returns eth amount (in) needed when swapping for requested usd amount (out)
+     * returns price of USDC in ETH
+     */
+    function quoteInverse(uint256 inUSDC) public view returns (uint256 outETH) {
+        (uint112 rUSDC, uint112 rETH, ) = IUniswapV2Pair(SLP).getReserves();
+        outETH = IUniswapV2Router02(ROUTER).quote(inUSDC, rUSDC, rETH);
+    }
+
+    /**
+     * returns ETH amount (in) needed when swapping for requested USDC amount (out)
      */
     function amountInETHForRequestedOutUSDC(uint256 outUSDC) public view returns (uint256 inETH) {
         inETH = IUniswapV2Router02(ROUTER).getAmountsIn(outUSDC, pathToUSDC)[0];

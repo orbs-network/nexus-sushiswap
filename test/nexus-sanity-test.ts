@@ -1,7 +1,16 @@
 import { expect } from "chai";
-import { balanceETH, balanceUSDC, deployer, nexus, startDeployerBalanceETH, startNexusBalanceUSDC } from "./test-base";
+import {
+  balanceETH,
+  balanceUSDC,
+  deployer,
+  IWETHContract,
+  nexus,
+  startDeployerBalanceETH,
+  startNexusBalanceUSDC,
+  startPrice,
+} from "./test-base";
 import { Tokens } from "../src/token";
-import { bn, bn18, ether, many } from "../src/utils";
+import { bn, bn18, ether, many, zero } from "../src/utils";
 
 describe("LiquidityNexus Sanity Tests", () => {
   it("sanity", async () => {
@@ -23,5 +32,18 @@ describe("LiquidityNexus Sanity Tests", () => {
 
     expect(await balanceETH(deployer)).bignumber.closeTo(startDeployerBalanceETH, ether);
     expect(await balanceUSDC()).bignumber.eq(startNexusBalanceUSDC);
+  });
+
+  it("available space to deposit", async () => {
+    const expectedETH = startNexusBalanceUSDC.mul(ether).div(startPrice);
+    const availableSpaceForETH = await nexus.methods.availableSpaceToDepositETH().call();
+    expect(availableSpaceForETH).bignumber.closeTo(expectedETH, bn18("0.00001"));
+
+    await IWETHContract.methods.deposit().send({ value: availableSpaceForETH });
+    await Tokens.WETH().methods.approve(nexus.options.address, availableSpaceForETH).send();
+
+    await nexus.methods.addLiquidity(availableSpaceForETH, many).send();
+
+    expect(await balanceUSDC()).bignumber.closeTo(zero, "100"); // near zero
   });
 });

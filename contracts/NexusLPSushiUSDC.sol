@@ -13,36 +13,17 @@ contract NexusLPSushiUSDC is ERC20("NexusLPSushiUSDC", "NSLP"), RebalancingStrat
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
-    event Mint(
-        address indexed sender,
-        address indexed to,
-        uint256 amountUSDC,
-        uint256 amountETH,
-        uint256 liquidity,
-        uint256 shares
-    );
+    event Mint(address indexed sender, address indexed to, uint256 liquidity, uint256 shares);
     event Burn(
         address indexed sender,
         address indexed to,
-        uint256 removedUSDC,
-        uint256 removedETH,
         uint256 exitUSDC,
         uint256 exitETH,
         uint256 liquidity,
         uint256 shares
     );
     event ClaimedRewards(address indexed sender, uint256 amount);
-    event CompoundedProfits(address indexed sender, uint256 amountUSDC, uint256 amountETH, uint256 liquidity);
-
-    // temp struct to avoid stack-too-deep
-    struct BurnParams {
-        uint256 removedUSDC;
-        uint256 removedETH;
-        uint256 exitUSDC;
-        uint256 exitETH;
-        uint256 liquidity;
-        uint256 shares;
-    }
+    event CompoundedProfits(address indexed sender, uint256 liquidity);
 
     struct Minter {
         uint256 entryETH;
@@ -54,6 +35,10 @@ contract NexusLPSushiUSDC is ERC20("NexusLPSushiUSDC", "NSLP"), RebalancingStrat
     uint256 public totalInvestedUSDC;
     uint256 public totalInvestedETH;
     mapping(address => Minter) public minters;
+
+    function availableSpaceToDepositETH() external view returns (uint256 amountETH) {
+        return quoteInverse(IERC20(USDC).balanceOf(address(this)));
+    }
 
     function addLiquidityETH(uint256 deadline)
         external
@@ -136,7 +121,7 @@ contract NexusLPSushiUSDC is ERC20("NexusLPSushiUSDC", "NSLP"), RebalancingStrat
         totalInvestedETH = totalInvestedETH.add(addedETH);
         totalLiquidity = totalLiquidity.add(liquidity);
 
-        emit CompoundedProfits(msg.sender, addedUSDC, addedETH, liquidity);
+        emit CompoundedProfits(msg.sender, liquidity);
     }
 
     function _depositETH(uint256 amountETH, uint256 deadline)
@@ -167,7 +152,7 @@ contract NexusLPSushiUSDC is ERC20("NexusLPSushiUSDC", "NSLP"), RebalancingStrat
 
         _mint(msg.sender, shares);
 
-        emit Mint(msg.sender, msg.sender, addedUSDC, addedETH, liquidity, shares);
+        emit Mint(msg.sender, msg.sender, liquidity, shares);
     }
 
     function _withdrawETH(uint256 shares, uint256 deadline) internal returns (uint256 exitETH) {
@@ -194,8 +179,7 @@ contract NexusLPSushiUSDC is ERC20("NexusLPSushiUSDC", "NSLP"), RebalancingStrat
         totalInvestedETH = totalInvestedETH.sub(entryETH);
         totalLiquidity = totalLiquidity.sub(liquidity);
 
-        BurnParams memory p = BurnParams(removedUSDC, removedETH, exitUSDC, exitETH, liquidity, shares); // avoids stack-too-deep
-        emit Burn(msg.sender, msg.sender, p.removedUSDC, p.removedETH, p.exitUSDC, p.exitETH, p.liquidity, p.shares);
+        emit Burn(msg.sender, msg.sender, exitUSDC, exitETH, liquidity, shares);
     }
 
     function emergencyExit() external onlyOwner {
