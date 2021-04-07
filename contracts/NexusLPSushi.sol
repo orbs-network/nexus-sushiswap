@@ -40,6 +40,11 @@ contract NexusLPSushi is ERC20("Nexus LP SushiSwap ETH/USDC", "NSLP"), Rebalanci
         return quoteInverse(IERC20(USDC).balanceOf(address(this)));
     }
 
+    function pricePerFullShare() external view returns (uint256) {
+        if (totalSupply() == 0) return 0;
+        return uint256(1e18).mul(totalLiquidity).div(totalSupply());
+    }
+
     function addLiquidityETH(uint256 deadline)
         external
         payable

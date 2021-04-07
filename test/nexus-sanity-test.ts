@@ -71,4 +71,19 @@ describe("LiquidityNexus Sanity Tests", () => {
     const burnEvents = _.get(tx.events, "Burn");
     expect(burnEvents).length(2);
   });
+
+  it("pricePerFullShare", async () => {
+    await IWETHContract.methods.deposit().send({ value: bn18("100") });
+    await Tokens.WETH().methods.approve(nexus.options.address, many).send();
+
+    expect(await nexus.methods.pricePerFullShare().call()).bignumber.zero;
+    await nexus.methods.addLiquidity(bn18("10"), many).send();
+    expect(await nexus.methods.pricePerFullShare().call()).bignumber.eq(ether);
+
+    await nexus.methods.compoundProfits(bn18("10")).send();
+    expect(await nexus.methods.pricePerFullShare().call()).bignumber.closeTo(bn18("1.5"), bn18("0.1")); // 50% swapped for USDC, so +50% of pool
+
+    await nexus.methods.removeAllLiquidity().send();
+    expect(await nexus.methods.pricePerFullShare().call()).bignumber.zero;
+  });
 });
