@@ -52,7 +52,7 @@ async function doBeforeEach() {
   );
   IWETHContract = contract<IWETH>(
     require("../artifacts/contracts/interface/ISushiswapRouter.sol/IWETH.json").abi,
-    Tokens.eth.WETH().address
+    Tokens.WETH().address
   );
 
   await supplyCapitalAsDeployer(bn6("10,000,000"));
@@ -74,7 +74,7 @@ export async function quote() {
  * @returns usdc balance, defaults to nexus address
  */
 export async function balanceUSDC(address: string = nexus.options.address) {
-  return bn(await Tokens.eth.USDC().methods.balanceOf(address).call());
+  return bn(await Tokens.USDC().methods.balanceOf(address).call());
 }
 
 /**
@@ -85,7 +85,7 @@ export async function balanceETH(address: string = nexus.options.address) {
 }
 
 export async function balanceWETH(address: string = nexus.options.address) {
-  return bn(await Tokens.eth.WETH().methods.balanceOf(address).call());
+  return bn(await Tokens.WETH().methods.balanceOf(address).call());
 }
 
 export async function totalInvestedUSDC() {
@@ -106,15 +106,15 @@ export async function changeEthPrice(percent: number) {
   const usdDelta = await computeUsdDeltaForTargetPrice(targetPrice);
 
   if (targetPrice.gt(price)) {
-    await Tokens.eth.USDC().methods.approve(sushiRouter.options.address, many).send({ from: usdcWhale });
+    await Tokens.USDC().methods.approve(sushiRouter.options.address, many).send({ from: usdcWhale });
     await sushiRouter.methods
-      .swapExactTokensForETH(usdDelta, 0, [Tokens.eth.USDC().address, Tokens.eth.WETH().address], usdcWhale, many)
+      .swapExactTokensForETH(usdDelta, 0, [Tokens.USDC().address, Tokens.WETH().address], usdcWhale, many)
       .send({ from: usdcWhale });
   } else {
     await sushiRouter.methods
       .swapETHForExactTokens(
         usdDelta.muln(997).divn(1000),
-        [Tokens.eth.WETH().address, Tokens.eth.USDC().address],
+        [Tokens.WETH().address, Tokens.USDC().address],
         usdcWhale,
         many
       )
@@ -136,7 +136,7 @@ export async function simulateInterestAccumulation() {
 
 async function supplyCapitalAsDeployer(amount: BN) {
   await ensureUsdBalance(deployer, amount);
-  await Tokens.eth.USDC().methods.approve(nexus.options.address, many).send();
+  await Tokens.USDC().methods.approve(nexus.options.address, many).send();
   await nexus.methods.depositAllCapital().send();
 }
 
@@ -145,7 +145,7 @@ async function supplyCapitalAsDeployer(amount: BN) {
  */
 async function ensureUsdBalance(address: string, amount: BN) {
   if ((await balanceUSDC(address)).lt(amount)) {
-    await Tokens.eth.USDC().methods.transfer(address, amount).send({ from: usdcWhale });
+    await Tokens.USDC().methods.transfer(address, amount).send({ from: usdcWhale });
   }
 }
 

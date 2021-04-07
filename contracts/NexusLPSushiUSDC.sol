@@ -3,6 +3,7 @@ pragma solidity ^0.7.6;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import "@openzeppelin/contracts/utils/Address.sol";
 import "./RebalancingStrategy1.sol";
 
 /**
@@ -71,7 +72,7 @@ contract NexusLPSushiUSDC is ERC20("NexusLPSushiUSDC", "NSLP"), RebalancingStrat
     {
         exitETH = _withdrawETH(shares, deadline);
         IWETH(WETH).withdraw(exitETH);
-        msg.sender.transfer(exitETH);
+        Address.sendValue(msg.sender, exitETH);
     }
 
     function removeLiquidity(uint256 shares, uint256 deadline)
@@ -92,7 +93,7 @@ contract NexusLPSushiUSDC is ERC20("NexusLPSushiUSDC", "NSLP"), RebalancingStrat
     function removeAllLiquidityETH() external nonReentrant whenNotPaused returns (uint256 exitETH) {
         exitETH = _withdrawETH(balanceOf(msg.sender), block.timestamp); // solhint-disable-line not-rely-on-time
         IWETH(WETH).withdraw(exitETH);
-        msg.sender.transfer(exitETH);
+        Address.sendValue(msg.sender, exitETH);
     }
 
     function claimRewards() external nonReentrant whenNotPaused onlyGovernance {
