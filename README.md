@@ -58,7 +58,7 @@ The owner can handle emergencies, but in a way that fully protects users and the
 
 This contract is marked in yellow, its users are on the left, contracts it relies on are on the right:
 
-![nexus-lp-architecture](https://user-images.githubusercontent.com/6762255/113847895-9678e900-97a0-11eb-8ad2-47d05d23c365.png)
+![nexus-lp-architecture](https://user-images.githubusercontent.com/6762255/113860804-2160e000-97af-11eb-8a49-1c7ea91431fb.png)
 
 ### Capabilities
 
