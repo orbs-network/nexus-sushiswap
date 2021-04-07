@@ -85,7 +85,7 @@ Sushi MasterChef only distributes 1/3 of SUSHI rewards immediately. The rest of 
 
 ### Rebalancing strategies and IL
 
-Since there are two different parties supplying the ETH and USDC, the fees and impermanent loss must be divided between them. There are multiple rebalancing strategies implemented in this contract. In general, the goal is to give the ETH suppliers more of the rewards in exachange for taking more of the IL risk. The USDC is sourced from CeFi providers via Orbs Liquidity Nexus and their general expectations are to limit exposure to crypto volatility and receive lower APY. Read more about the rebalancing strategies in the Orbs Liquidity Nexus Medium posts below.
+Since there are two different parties supplying the ETH and USDC, the fees and impermanent loss must be divided between them. There are multiple rebalancing strategies implemented in this contract. In general, the goal is to give the ETH suppliers more of the rewards in exachange for taking more of the IL risk. The USDC is sourced from CeFi providers via Orbs Liquidity Nexus and their general expectations are to limit exposure to crypto volatility and receive lower APY. Read more about the rebalancing strategies in the Orbs Liquidity Nexus Medium posts below. You can also see how IL is divided (ignoring swap fees) in each strategy [here](SingleSidedILStrategies.pdf).
 
 ### Transferring Nexus LP tokens
 
