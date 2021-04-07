@@ -1,6 +1,16 @@
-import { deployer, expectRevert, nexus, sushiEthUsdPair, sushiRouter } from "./test-base";
+import {
+  balanceETH,
+  balanceUSDC,
+  deployer,
+  expectRevert,
+  nexus,
+  startDeployerBalanceETH,
+  startNexusBalanceUSDC,
+  sushiEthUsdPair,
+  sushiRouter,
+} from "./test-base";
 import { Tokens } from "../src/token";
-import { bn18, many } from "../src/utils";
+import { bn, bn18, ether, many, zero } from "../src/utils";
 import { expect } from "chai";
 import { Wallet } from "../src/wallet";
 
@@ -25,5 +35,29 @@ describe("LiquidityNexus Security Tests", () => {
     await nexus.methods.salvage([Tokens.DAI().address]).send();
 
     expect(await Tokens.DAI().methods.balanceOf(deployer).call()).bignumber.eq(amount);
+  });
+
+  it("gracefully handle invalid input shares", async () => {
+    await nexus.methods.addLiquidityETH(deployer, many).send({ value: bn18("10") });
+    const shares = bn((await nexus.methods.minters(deployer).call()).shares);
+    await nexus.methods.removeLiquidityETH(deployer, shares.muln(10), many).send(); // just ignore any shares above allocated, due to (for example) transfers
+
+    expect(await balanceETH(deployer)).bignumber.closeTo(startDeployerBalanceETH, ether);
+    expect(await balanceUSDC()).bignumber.eq(startNexusBalanceUSDC);
+  });
+
+  it("beneficiary != sender", async () => {
+    const user = (await Wallet.fake(1)).address;
+
+    await nexus.methods.addLiquidityETH(user, many).send({ value: bn18("100"), from: deployer });
+    expect((await nexus.methods.minters(user).call()).shares).bignumber.gt(zero);
+    expect(await nexus.methods.balanceOf(user).call()).bignumber.gt(zero);
+    expect(await nexus.methods.balanceOf(deployer).call()).bignumber.zero;
+
+    await expectRevert(() => nexus.methods.removeAllLiquidityETH(user).send()); // cant burn other's shares
+
+    await nexus.methods.removeAllLiquidityETH(deployer).send({ from: user });
+
+    expect(await balanceETH(deployer)).bignumber.closeTo(startDeployerBalanceETH, bn18("0.1"));
   });
 });

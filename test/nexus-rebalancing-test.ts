@@ -19,7 +19,7 @@ describe("RebalancingStrategy1: rebalance usd/eth such that eth provider takes a
     const user1 = (await Wallet.fake(1)).address;
     const user2 = (await Wallet.fake(2)).address;
 
-    await nexus.methods.addLiquidityETH(many).send({ value: bn18("100"), from: user1 });
+    await nexus.methods.addLiquidityETH(user1, many).send({ value: bn18("100"), from: user1 });
     const investedForUser1 = await totalInvestedUSDC();
     expect(investedForUser1).bignumber.closeTo(startPrice.muln(100), bn6("0.01"));
 
@@ -27,34 +27,34 @@ describe("RebalancingStrategy1: rebalance usd/eth such that eth provider takes a
     expect(await totalInvestedUSDC()).bignumber.eq(investedForUser1);
 
     for (let i = 0; i < 3; i++) {
-      await nexus.methods.addLiquidityETH(many).send({ value: bn18("100"), from: user2 });
-      expect(await nexus.methods.removeAllLiquidityETH().call({ from: user2 })).bignumber.closeTo(
+      await nexus.methods.addLiquidityETH(user2, many).send({ value: bn18("100"), from: user2 });
+      expect(await nexus.methods.removeAllLiquidityETH(user2).call({ from: user2 })).bignumber.closeTo(
         bn18("100"),
         bn18("0.001")
       );
-      await nexus.methods.removeAllLiquidityETH().send({ from: user2 });
+      await nexus.methods.removeAllLiquidityETH(user2).send({ from: user2 });
     }
 
     expect(await totalInvestedUSDC()).bignumber.eq(investedForUser1);
   });
 
   it("same user enter and exit multiple times, no leftovers", async () => {
-    await nexus.methods.addLiquidityETH(many).send({ value: bn18("100") });
+    await nexus.methods.addLiquidityETH(deployer, many).send({ value: bn18("100") });
     await changeEthPrice(50);
-    await nexus.methods.addLiquidityETH(many).send({ value: bn18("100") });
+    await nexus.methods.addLiquidityETH(deployer, many).send({ value: bn18("100") });
 
     const ethInvested = startDeployerBalanceETH.sub(await balanceETH(deployer));
     expect(ethInvested).bignumber.closeTo(bn18("200"), bn18("0.01"));
 
     const shares0 = bn((await nexus.methods.minters(deployer).call()).shares);
-    expect(await nexus.methods.removeLiquidityETH(shares0.divn(2), many).call()).bignumber.closeTo(
+    expect(await nexus.methods.removeLiquidityETH(deployer, shares0.divn(2), many).call()).bignumber.closeTo(
       bn18("98.3"),
       bn18("0.1")
     );
-    await nexus.methods.removeLiquidityETH(shares0.divn(2), many).send();
+    await nexus.methods.removeLiquidityETH(deployer, shares0.divn(2), many).send();
 
-    expect(await nexus.methods.removeAllLiquidityETH().call()).bignumber.closeTo(bn18("98.3"), bn18("0.1"));
-    await nexus.methods.removeAllLiquidityETH().send();
+    expect(await nexus.methods.removeAllLiquidityETH(deployer).call()).bignumber.closeTo(bn18("98.3"), bn18("0.1"));
+    await nexus.methods.removeAllLiquidityETH(deployer).send();
     expect(await balanceETH(deployer)).bignumber.closeTo(startDeployerBalanceETH.sub(bn18("4")), bn18("1")); // from IL + gas
 
     const { entryETH, entryUSDC, shares } = await nexus.methods.minters(deployer).call();
@@ -68,29 +68,29 @@ describe("RebalancingStrategy1: rebalance usd/eth such that eth provider takes a
     const whale = (await Wallet.fake(1)).address;
     const fishy = (await Wallet.fake(2)).address;
 
-    await nexus.methods.addLiquidityETH(many).send({ value: bn18("100"), from: whale });
+    await nexus.methods.addLiquidityETH(whale, many).send({ value: bn18("100"), from: whale });
     const usdBackingForWhale = startPrice.muln(100);
     expect(await totalInvestedUSDC()).bignumber.closeTo(usdBackingForWhale, bn6("0.01"));
 
     const price25 = await changeEthPrice(25);
 
-    await nexus.methods.addLiquidityETH(many).send({ value: bn18("1"), from: fishy });
+    await nexus.methods.addLiquidityETH(fishy, many).send({ value: bn18("1"), from: fishy });
     const usdBackingForFish = price25; // new price of 1 eth
     expect(await totalInvestedUSDC()).bignumber.closeTo(usdBackingForWhale.add(usdBackingForFish), bn6("0.01"));
 
     // original eth after price shift without rebalancing is 89.44
-    expect(await nexus.methods.removeAllLiquidityETH().call({ from: whale })).bignumber.closeTo(
+    expect(await nexus.methods.removeAllLiquidityETH(whale).call({ from: whale })).bignumber.closeTo(
       bn18("98.89"),
       bn18("0.01")
     );
-    await nexus.methods.removeAllLiquidityETH().send({ from: whale });
+    await nexus.methods.removeAllLiquidityETH(whale).send({ from: whale });
     expect(await totalInvestedUSDC()).bignumber.closeTo(usdBackingForFish, bn6("0.01"));
 
-    expect(await nexus.methods.removeAllLiquidityETH().call({ from: fishy })).bignumber.closeTo(
+    expect(await nexus.methods.removeAllLiquidityETH(fishy).call({ from: fishy })).bignumber.closeTo(
       bn18("0.99"),
       bn18("0.01")
     );
-    await nexus.methods.removeAllLiquidityETH().send({ from: fishy });
+    await nexus.methods.removeAllLiquidityETH(fishy).send({ from: fishy });
     expect(await totalInvestedUSDC()).bignumber.zero;
     expect(await balanceUSDC()).bignumber.eq(startNexusBalanceUSDC);
   });
@@ -99,18 +99,18 @@ describe("RebalancingStrategy1: rebalance usd/eth such that eth provider takes a
     const u1 = (await Wallet.fake(1)).address;
     const u2 = (await Wallet.fake(2)).address;
 
-    await nexus.methods.addLiquidityETH(many).send({ value: bn18("100"), from: u1 });
+    await nexus.methods.addLiquidityETH(u1, many).send({ value: bn18("100"), from: u1 });
     await changeEthPrice(50);
-    await nexus.methods.addLiquidityETH(many).send({ value: bn18("100"), from: u1 });
+    await nexus.methods.addLiquidityETH(u1, many).send({ value: bn18("100"), from: u1 });
     await changeEthPrice(-66.666);
-    await nexus.methods.addLiquidityETH(many).send({ value: bn18("100"), from: u2 });
+    await nexus.methods.addLiquidityETH(u2, many).send({ value: bn18("100"), from: u2 });
     await changeEthPrice(300);
-    await nexus.methods.addLiquidityETH(many).send({ value: bn18("100"), from: u2 });
+    await nexus.methods.addLiquidityETH(u2, many).send({ value: bn18("100"), from: u2 });
 
-    expect(await nexus.methods.removeAllLiquidityETH().call({ from: u1 })).bignumber.closeTo(bn18("190"), ether);
-    expect(await nexus.methods.removeAllLiquidityETH().call({ from: u2 })).bignumber.closeTo(bn18("175"), ether);
-    await nexus.methods.removeAllLiquidityETH().send({ from: u1 });
-    await nexus.methods.removeAllLiquidityETH().send({ from: u2 });
+    expect(await nexus.methods.removeAllLiquidityETH(u1).call({ from: u1 })).bignumber.closeTo(bn18("190"), ether);
+    expect(await nexus.methods.removeAllLiquidityETH(u2).call({ from: u2 })).bignumber.closeTo(bn18("175"), ether);
+    await nexus.methods.removeAllLiquidityETH(u1).send({ from: u1 });
+    await nexus.methods.removeAllLiquidityETH(u2).send({ from: u2 });
     expect(await totalInvestedUSDC()).bignumber.zero;
     expect(await balanceETH(u1)).bignumber.closeTo(bn18("9,990"), ether);
     expect(await balanceETH(u2)).bignumber.closeTo(bn18("9,975"), ether);
@@ -120,15 +120,21 @@ describe("RebalancingStrategy1: rebalance usd/eth such that eth provider takes a
     const user1 = (await Wallet.fake(1)).address;
     const user2 = (await Wallet.fake(2)).address;
 
-    await nexus.methods.addLiquidityETH(many).send({ value: bn18("100"), from: user1 });
-    await nexus.methods.addLiquidityETH(many).send({ value: bn18("100"), from: user2 });
+    await nexus.methods.addLiquidityETH(user1, many).send({ value: bn18("100"), from: user1 });
+    await nexus.methods.addLiquidityETH(user2, many).send({ value: bn18("100"), from: user2 });
 
     await simulateInterestAccumulation();
 
-    expect(await nexus.methods.removeAllLiquidityETH().call({ from: user1 })).bignumber.closeTo(bn18("111"), ether);
-    await nexus.methods.removeAllLiquidityETH().send({ from: user1 });
-    expect(await nexus.methods.removeAllLiquidityETH().call({ from: user2 })).bignumber.closeTo(bn18("111"), ether);
-    await nexus.methods.removeAllLiquidityETH().send({ from: user2 });
+    expect(await nexus.methods.removeAllLiquidityETH(user1).call({ from: user1 })).bignumber.closeTo(
+      bn18("111"),
+      ether
+    );
+    await nexus.methods.removeAllLiquidityETH(user1).send({ from: user1 });
+    expect(await nexus.methods.removeAllLiquidityETH(user2).call({ from: user2 })).bignumber.closeTo(
+      bn18("111"),
+      ether
+    );
+    await nexus.methods.removeAllLiquidityETH(user2).send({ from: user2 });
 
     expect(await nexus.methods.totalInvestedUSDC().call()).bignumber.zero;
     expect(await nexus.methods.totalInvestedETH().call()).bignumber.zero;
@@ -139,16 +145,22 @@ describe("RebalancingStrategy1: rebalance usd/eth such that eth provider takes a
     const user1 = (await Wallet.fake(1)).address;
     const user2 = (await Wallet.fake(2)).address;
 
-    await nexus.methods.addLiquidityETH(many).send({ value: bn18("100"), from: user1 });
-    await nexus.methods.addLiquidityETH(many).send({ value: bn18("100"), from: user2 });
+    await nexus.methods.addLiquidityETH(user1, many).send({ value: bn18("100"), from: user1 });
+    await nexus.methods.addLiquidityETH(user2, many).send({ value: bn18("100"), from: user2 });
 
     await simulateInterestAccumulation();
     await changeEthPrice(50);
 
-    expect(await nexus.methods.removeAllLiquidityETH().call({ from: user1 })).bignumber.closeTo(bn18("104"), ether);
-    await nexus.methods.removeAllLiquidityETH().send({ from: user1 });
-    expect(await nexus.methods.removeAllLiquidityETH().call({ from: user2 })).bignumber.closeTo(bn18("104"), ether);
-    await nexus.methods.removeAllLiquidityETH().send({ from: user2 });
+    expect(await nexus.methods.removeAllLiquidityETH(user1).call({ from: user1 })).bignumber.closeTo(
+      bn18("104"),
+      ether
+    );
+    await nexus.methods.removeAllLiquidityETH(user1).send({ from: user1 });
+    expect(await nexus.methods.removeAllLiquidityETH(user2).call({ from: user2 })).bignumber.closeTo(
+      bn18("104"),
+      ether
+    );
+    await nexus.methods.removeAllLiquidityETH(user2).send({ from: user2 });
 
     expect(await nexus.methods.totalInvestedUSDC().call()).bignumber.zero;
     expect(await nexus.methods.totalInvestedETH().call()).bignumber.zero;
@@ -160,12 +172,12 @@ describe("RebalancingStrategy1: rebalance usd/eth such that eth provider takes a
       .bignumber.eq(bn6("10,000,000"))
       .eq(startNexusBalanceUSDC);
 
-    await nexus.methods.addLiquidityETH(many).send({ value: bn18("100") });
+    await nexus.methods.addLiquidityETH(deployer, many).send({ value: bn18("100") });
 
     await changeEthPrice(-90);
 
-    expect(await nexus.methods.removeAllLiquidityETH().call()).bignumber.closeTo(zero, ether);
-    await nexus.methods.removeAllLiquidityETH().send();
+    expect(await nexus.methods.removeAllLiquidityETH(deployer).call()).bignumber.closeTo(zero, ether);
+    await nexus.methods.removeAllLiquidityETH(deployer).send();
 
     expect(await nexus.methods.totalInvestedUSDC().call()).bignumber.zero;
     expect(await nexus.methods.totalInvestedETH().call()).bignumber.zero;
@@ -173,13 +185,13 @@ describe("RebalancingStrategy1: rebalance usd/eth such that eth provider takes a
   });
 
   it("price drop + interest", async () => {
-    await nexus.methods.addLiquidityETH(many).send({ value: bn18("100") });
+    await nexus.methods.addLiquidityETH(deployer, many).send({ value: bn18("100") });
 
     await simulateInterestAccumulation();
     await changeEthPrice(-50);
 
-    expect(await nexus.methods.removeAllLiquidityETH().call()).bignumber.closeTo(bn18("106"), ether);
-    await nexus.methods.removeAllLiquidityETH().send();
+    expect(await nexus.methods.removeAllLiquidityETH(deployer).call()).bignumber.closeTo(bn18("106"), ether);
+    await nexus.methods.removeAllLiquidityETH(deployer).send();
 
     expect(await nexus.methods.totalInvestedUSDC().call()).bignumber.zero;
     expect(await nexus.methods.totalInvestedETH().call()).bignumber.zero;

@@ -28,8 +28,8 @@ describe("LiquidityNexus with Sushiswap single sided ETH/USDC e2e", () => {
     const amount = bn18("10");
     await IWETHContract.methods.deposit().send({ value: amount });
     await Tokens.WETH().methods.approve(nexus.options.address, many).send();
-    await nexus.methods.addLiquidity(amount, many).send();
-    await nexus.methods.removeAllLiquidity().send();
+    await nexus.methods.addLiquidity(deployer, amount, many).send();
+    await nexus.methods.removeAllLiquidity(deployer).send();
     expect(await balanceWETH(deployer)).bignumber.closeTo(amount, bn18("0.00000001")); // probably rounding issues in Sushi
   });
 
@@ -37,7 +37,7 @@ describe("LiquidityNexus with Sushiswap single sided ETH/USDC e2e", () => {
     const user = await Wallet.fake(1);
     const startBalance = await user.getBalance();
 
-    await nexus.methods.addLiquidityETH(many).send({ value: bn18("10"), from: user.address });
+    await nexus.methods.addLiquidityETH(user.address, many).send({ value: bn18("10"), from: user.address });
     expect(await user.getBalance()).bignumber.closeTo(startBalance.sub(bn18("10")), ether);
 
     let account = await nexus.methods.minters(user.address).call();
@@ -47,7 +47,7 @@ describe("LiquidityNexus with Sushiswap single sided ETH/USDC e2e", () => {
       .bignumber.eq(await nexus.methods.totalLiquidity().call())
       .bignumber.eq(account.shares);
 
-    await nexus.methods.removeAllLiquidityETH().send({ from: user.address });
+    await nexus.methods.removeAllLiquidityETH(user.address).send({ from: user.address });
     expect(await user.getBalance()).bignumber.closeTo(startBalance, bn18("0.1"));
 
     expect(await nexus.methods.totalSupply().call()).eq(await nexus.methods.totalLiquidity().call()).bignumber.zero;
@@ -63,13 +63,13 @@ describe("LiquidityNexus with Sushiswap single sided ETH/USDC e2e", () => {
   it("multiple deposits", async () => {
     const user1 = (await Wallet.fake(1)).address;
     const user2 = (await Wallet.fake(2)).address;
-    await nexus.methods.addLiquidityETH(many).send({ value: bn18("10"), from: user1 });
-    await nexus.methods.addLiquidityETH(many).send({ value: bn18("20"), from: user2 });
-    expect(await nexus.methods.removeAllLiquidityETH().call({ from: user1 })).bignumber.closeTo(bn18("10"), ether);
-    expect(await nexus.methods.removeAllLiquidityETH().call({ from: user2 })).bignumber.closeTo(bn18("20"), ether);
+    await nexus.methods.addLiquidityETH(user1, many).send({ value: bn18("10"), from: user1 });
+    await nexus.methods.addLiquidityETH(user2, many).send({ value: bn18("20"), from: user2 });
+    expect(await nexus.methods.removeAllLiquidityETH(user1).call({ from: user1 })).bignumber.closeTo(bn18("10"), ether);
+    expect(await nexus.methods.removeAllLiquidityETH(user2).call({ from: user2 })).bignumber.closeTo(bn18("20"), ether);
     await Promise.all([
-      nexus.methods.removeAllLiquidityETH().send({ from: user1 }),
-      nexus.methods.removeAllLiquidityETH().send({ from: user2 }),
+      nexus.methods.removeAllLiquidityETH(user1).send({ from: user1 }),
+      nexus.methods.removeAllLiquidityETH(user2).send({ from: user2 }),
     ]);
     expect(await balanceUSDC()).bignumber.eq(startNexusBalanceUSDC);
   });
