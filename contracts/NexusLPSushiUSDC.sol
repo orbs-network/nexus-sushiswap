@@ -6,9 +6,9 @@ import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "./RebalancingStrategy1.sol";
 
 /**
- * The LiquidityNexus Auto Rebalancing Contract for USDC/ETH single sided liquidity
+ * The LiquidityNexus Auto Rebalancing Contract for USDC/ETH single sided liquidity provision on Sushiswap
  */
-contract LiquidityNexusSushiLP is ERC20("LiquidityNexusSushiLP", "LNSLP"), RebalancingStrategy1 {
+contract NexusLPSushiUSDC is ERC20("NexusLPSushiUSDC", "NSLP"), RebalancingStrategy1 {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
@@ -96,8 +96,8 @@ contract LiquidityNexusSushiLP is ERC20("LiquidityNexusSushiLP", "LNSLP"), Rebal
     }
 
     function claimRewards() external nonReentrant whenNotPaused onlyGovernance {
-        _sushiClaimRewards();
-        IERC20(SUSHI).safeTransfer(msg.sender, IERC20(SUSHI).balanceOf(address(this)));
+        _poolClaimRewards();
+        IERC20(REWARD).safeTransfer(msg.sender, IERC20(REWARD).balanceOf(address(this)));
     }
 
     function compoundProfits(uint256 amountETH)
@@ -111,13 +111,13 @@ contract LiquidityNexusSushiLP is ERC20("LiquidityNexusSushiLP", "LNSLP"), Rebal
             uint256 liquidity
         )
     {
-        IERC20(WETH).transferFrom(msg.sender, address(this), amountETH);
+        IERC20(WETH).safeTransferFrom(msg.sender, address(this), amountETH);
 
         uint256 eth = IERC20(WETH).balanceOf(address(this));
-        _sushiSwapExactETHForUSDC(eth.div(2));
+        _poolSwapExactETHForUSDC(eth.div(2));
         eth = IERC20(WETH).balanceOf(address(this));
 
-        (addedUSDC, addedETH, liquidity) = _sushiAddLiquidityAndStake(eth, block.timestamp); // solhint-disable-line not-rely-on-time
+        (addedUSDC, addedETH, liquidity) = _poolAddLiquidityAndStake(eth, block.timestamp); // solhint-disable-line not-rely-on-time
         totalInvestedUSDC = totalInvestedUSDC.add(addedUSDC);
         totalInvestedETH = totalInvestedETH.add(addedETH);
         totalLiquidity = totalLiquidity.add(liquidity);
@@ -132,7 +132,7 @@ contract LiquidityNexusSushiLP is ERC20("LiquidityNexusSushiLP", "LNSLP"), Rebal
         )
     {
         uint256 liquidity;
-        (addedUSDC, addedETH, liquidity) = _sushiAddLiquidityAndStake(amountETH, deadline);
+        (addedUSDC, addedETH, liquidity) = _poolAddLiquidityAndStake(amountETH, deadline);
 
         if (totalSupply() == 0) {
             shares = liquidity;
@@ -163,7 +163,7 @@ contract LiquidityNexusSushiLP is ERC20("LiquidityNexusSushiLP", "LNSLP"), Rebal
 
         _burn(msg.sender, shares);
 
-        (uint256 removedETH, uint256 removedUSDC) = _sushiUnstakeAndRemoveLiquidity(liquidity, deadline);
+        (uint256 removedETH, uint256 removedUSDC) = _poolUnstakeAndRemoveLiquidity(liquidity, deadline);
 
         uint256 entryUSDC = minter.entryUSDC.mul(shares).div(minter.shares);
         uint256 entryETH = minter.entryETH.mul(shares).div(minter.shares);
@@ -182,7 +182,7 @@ contract LiquidityNexusSushiLP is ERC20("LiquidityNexusSushiLP", "LNSLP"), Rebal
     }
 
     function emergencyExit() external onlyOwner {
-        _sushiUnstakeAndRemoveLiquidity(totalLiquidity, block.timestamp); // solhint-disable-line not-rely-on-time
+        _poolUnstakeAndRemoveLiquidity(totalLiquidity, block.timestamp); // solhint-disable-line not-rely-on-time
         withdrawFreeCapital();
         totalLiquidity = 0;
         totalInvestedUSDC = 0;

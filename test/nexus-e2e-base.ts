@@ -1,19 +1,19 @@
 import BN from "bn.js";
 import { bn, bn6, ether, many } from "../src/utils";
+import { NexusLPSushiUSDC } from "../typechain-hardhat/NexusLPSushiUSDC";
 import { IUniswapV2Pair } from "../typechain-hardhat/IUniswapV2Pair";
 import { contract, deployContract } from "../src/extensions";
 import { impersonate, resetFakeNetworkFork, web3 } from "../src/network";
 import { Tokens } from "../src/token";
 import { IUniswapV2Router02 } from "../typechain-hardhat/IUniswapV2Router02";
 import { Wallet } from "../src/wallet";
-import { LiquidityNexusSushiLP } from "../typechain-hardhat/LiquidityNexusSushiLP";
 import { IWETH } from "../typechain-hardhat/IWETH";
 import { expect } from "chai";
 
 const usdcWhale = "0xBE0eB53F46cd790Cd13851d5EFf43D12404d33E8"; // binance7
 
 export let deployer: string;
-export let nexus: LiquidityNexusSushiLP;
+export let nexus: NexusLPSushiUSDC;
 export let startDeployerBalanceETH: BN;
 export let startNexusBalanceUSDC: BN;
 export let startPrice: BN;
@@ -40,7 +40,7 @@ async function doBeforeEach() {
   const wallet = await Wallet.fake();
   wallet.setAsDefaultSigner();
   deployer = wallet.address;
-  nexus = await deployContract<LiquidityNexusSushiLP>("LiquidityNexusSushiLP", deployer);
+  nexus = await deployContract<NexusLPSushiUSDC>("NexusLPSushiUSDC", deployer);
 
   sushiRouter = contract<IUniswapV2Router02>(
     require("../artifacts/contracts/interface/ISushiswapRouter.sol/IUniswapV2Router02.json").abi,
