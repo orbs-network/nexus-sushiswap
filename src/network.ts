@@ -1,5 +1,8 @@
 import _ from "lodash";
 import { Artifact } from "hardhat/types";
+import { TransactionReceipt } from "web3-core";
+
+const parseReceiptEvents = require("web3-parse-receipt-events");
 
 function hre() {
   return require("hardhat");
@@ -40,6 +43,10 @@ export async function advanceTime(seconds: number) {
   console.log(`advancing time by ${seconds} seconds`);
   await network().provider.send("evm_increaseTime", [seconds]);
   await network().provider.send("evm_mine", [(await web3().eth.getBlock(b)).timestamp + seconds]);
+}
+
+export function parseEvents(abis: any[], address: string, tx: TransactionReceipt) {
+  parseReceiptEvents(abis, address, tx);
 }
 
 function forkingBlockNumber() {

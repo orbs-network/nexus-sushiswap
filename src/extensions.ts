@@ -10,7 +10,9 @@ export type BlockNumber = BlockType;
 export type Receipt = TransactionReceipt;
 
 export function contract<T extends Contract>(abi: string | any[], address: string = "", options?: Options) {
-  return new (web3().eth.Contract)(abi, address, prime(options)) as T;
+  const c = new (web3().eth.Contract)(abi, address, prime(options)) as T;
+  c.handleRevert = true;
+  return c;
 }
 
 export function prime(options?: Options, overrides?: Options): PrimedOptions {

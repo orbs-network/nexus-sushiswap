@@ -8,9 +8,12 @@ import {
   startDeployerBalanceETH,
   startNexusBalanceUSDC,
   startPrice,
+  sushiEthUsdPair,
 } from "./test-base";
 import { Tokens } from "../src/token";
 import { bn, bn18, ether, many, zero } from "../src/utils";
+import _ from "lodash";
+import { parseEvents } from "../src/network";
 
 describe("LiquidityNexus Sanity Tests", () => {
   it("sanity", async () => {
@@ -45,5 +48,27 @@ describe("LiquidityNexus Sanity Tests", () => {
     await nexus.methods.addLiquidity(availableSpaceForETH, many).send();
 
     expect(await balanceUSDC()).bignumber.closeTo(zero, "100"); // near zero
+  });
+
+  it("mint events", async () => {
+    const depositTx = await nexus.methods.addLiquidityETH(many).send({ value: bn18("10") });
+    parseEvents(sushiEthUsdPair.options.jsonInterface, sushiEthUsdPair.options.address, depositTx);
+
+    const mintEvents = _.get(depositTx.events, "Mint");
+    expect(mintEvents).length(2);
+    const poolMintEvent = _.find(mintEvents, (e) => e.address == sushiEthUsdPair.options.address);
+    expect(poolMintEvent.returnValues["amount1"]).bignumber.eq(bn18("10"));
+    const nexusMintEvent = _.find(mintEvents, (e) => e.address == nexus.options.address);
+    expect(nexusMintEvent.returnValues["to"]).eq(deployer);
+  });
+
+  it("burn events", async () => {
+    await nexus.methods.addLiquidityETH(many).send({ value: bn18("10") });
+
+    const tx = await nexus.methods.removeAllLiquidity().send();
+    parseEvents(sushiEthUsdPair.options.jsonInterface, sushiEthUsdPair.options.address, tx);
+
+    const burnEvents = _.get(tx.events, "Burn");
+    expect(burnEvents).length(2);
   });
 });
