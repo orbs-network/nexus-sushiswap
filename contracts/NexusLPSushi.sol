@@ -9,7 +9,7 @@ import "./RebalancingStrategy1.sol";
 /**
  * The LiquidityNexus Auto Rebalancing Contract for USDC/ETH single sided liquidity provision on Sushiswap
  */
-contract NexusLPSushiUSDC is ERC20("NexusLPSushiUSDC", "NSLP"), RebalancingStrategy1 {
+contract NexusLPSushi is ERC20("Nexus LP SushiSwap ETH/USDC", "NSLP"), RebalancingStrategy1 {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
