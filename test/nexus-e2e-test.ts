@@ -5,9 +5,11 @@ import { bn, bn18, bn6, ether, many, zero } from "../src/utils";
 import {
   balanceETH,
   balanceUSDC,
+  balanceWETH,
   changeEthPrice,
   deployer,
   expectRevert,
+  IWETHContract,
   nexus,
   simulateInterestAccumulation,
   startDeployerBalanceETH,
@@ -34,6 +36,15 @@ describe("LiquidityNexus with Sushiswap single sided ETH/USDC e2e", () => {
     it("should revert on improper access", async () => {
       await expectRevert(() => nexus.methods.emergencyExit().send({ from: Wallet.random().address }));
     });
+
+    it("add and remove liquidity WETH", async () => {
+      const amount = bn18("10");
+      await IWETHContract.methods.deposit().send({ value: amount });
+      await Tokens.eth.WETH().methods.approve(nexus.options.address, many).send();
+      await nexus.methods.addLiquidity(amount, many).send();
+      await nexus.methods.removeAllLiquidity().send();
+      expect(await balanceWETH(deployer)).bignumber.closeTo(amount, bn18("0.00000001")); // probably rounding issues in Sushi
+    });
   });
 
   it("owner can emergency liquidate", async () => {
@@ -55,7 +66,7 @@ describe("LiquidityNexus with Sushiswap single sided ETH/USDC e2e", () => {
     expect(await user.getBalance()).bignumber.closeTo(startBalance.sub(bn18("10")), ether);
 
     let account = await nexus.methods.minters(user.address).call();
-    expect(account.entryETH).bignumber.closeTo(bn18("10"), bn18("0.1")); // difference due to gas costs
+    expect(account.entryETH).bignumber.closeTo(bn18("10"), bn18("0.1"));
     expect(account.entryUSDC).not.bignumber.zero;
     expect(await nexus.methods.totalSupply().call())
       .bignumber.eq(await nexus.methods.totalLiquidity().call())
