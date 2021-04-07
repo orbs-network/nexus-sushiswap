@@ -14,17 +14,6 @@ import {
 } from "./test-base";
 
 describe("LiquidityNexus with Sushiswap single sided ETH/USDC e2e", () => {
-  it("owner can emergency liquidate", async () => {
-    expect(await balanceUSDC()).not.bignumber.zero;
-    expect(await balanceUSDC(deployer)).bignumber.zero;
-
-    await nexus.methods.emergencyExit().send();
-
-    expect(await nexus.methods.paused().call()).to.be.false;
-    expect(await balanceUSDC()).bignumber.zero;
-    expect(await balanceUSDC(deployer)).not.bignumber.zero;
-  });
-
   it("add and remove liquidity WETH", async () => {
     const amount = bn18("10");
     await IWETHContract.methods.deposit().send({ value: amount });

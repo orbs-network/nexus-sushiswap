@@ -17,7 +17,7 @@ import { Wallet } from "../src/wallet";
 
 describe("LiquidityNexus Security Tests", () => {
   it("should revert on improper access", async () => {
-    await expectRevert(() => nexus.methods.emergencyExit().send({ from: Wallet.random().address }));
+    await expectRevert(() => nexus.methods.emergencyExit([]).send({ from: Wallet.random().address }));
   });
 
   it("salvage only allowed tokens", async () => {
@@ -60,5 +60,21 @@ describe("LiquidityNexus Security Tests", () => {
     await nexus.methods.removeAllLiquidityETH(deployer, deadline).send({ from: user });
 
     expect(await balanceETH(deployer)).bignumber.closeTo(startDeployerBalanceETH, bn18("0.1"));
+  });
+
+  it("emergency exit only for supplied minters, withdraws free capital", async () => {
+    await nexus.methods.addLiquidityETH(deployer, deadline).send({ value: bn18("10") });
+    // TODO
+  });
+
+  it("owner can emergency liquidate", async () => {
+    expect(await balanceUSDC()).not.bignumber.zero;
+    expect(await balanceUSDC(deployer)).bignumber.zero;
+
+    await nexus.methods.emergencyExit([]).send();
+
+    expect(await nexus.methods.paused().call()).to.be.true;
+    expect(await balanceUSDC()).bignumber.zero;
+    expect(await balanceUSDC(deployer)).not.bignumber.zero;
   });
 });

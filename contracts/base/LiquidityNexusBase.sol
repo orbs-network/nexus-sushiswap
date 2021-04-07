@@ -59,8 +59,7 @@ contract LiquidityNexusBase is Ownable, Pausable, ReentrancyGuard {
     }
 
     function salvage(address[] memory tokens_) external onlyOwner {
-        uint256 ercLen = tokens_.length;
-        for (uint256 i = 0; i < ercLen; i++) {
+        for (uint256 i = 0; i < tokens_.length; i++) {
             address token = tokens_[i];
             require(isSalvagable(token), "not salvagable");
             uint256 balance = IERC20(token).balanceOf(address(this));

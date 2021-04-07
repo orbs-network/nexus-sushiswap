@@ -58,7 +58,7 @@ contract NexusLPSushi is ERC20("Nexus LP SushiSwap ETH/USDC", "NSLP"), Rebalanci
     {
         uint256 amountETH = msg.value;
         IWETH(WETH).deposit{value: amountETH}();
-        return _depositETH(beneficiary, amountETH, deadline);
+        return _deposit(beneficiary, amountETH, deadline);
     }
 
     function addLiquidity(
@@ -76,7 +76,7 @@ contract NexusLPSushi is ERC20("Nexus LP SushiSwap ETH/USDC", "NSLP"), Rebalanci
         )
     {
         IERC20(WETH).safeTransferFrom(msg.sender, address(this), amountETH);
-        return _depositETH(beneficiary, amountETH, deadline);
+        return _deposit(beneficiary, amountETH, deadline);
     }
 
     function removeLiquidityETH(
@@ -84,7 +84,7 @@ contract NexusLPSushi is ERC20("Nexus LP SushiSwap ETH/USDC", "NSLP"), Rebalanci
         uint256 shares,
         uint256 deadline
     ) external nonReentrant returns (uint256 exitETH) {
-        exitETH = _withdrawETH(beneficiary, shares, deadline);
+        exitETH = _withdraw(msg.sender, beneficiary, shares, deadline);
         IWETH(WETH).withdraw(exitETH);
         Address.sendValue(beneficiary, exitETH);
     }
@@ -94,7 +94,7 @@ contract NexusLPSushi is ERC20("Nexus LP SushiSwap ETH/USDC", "NSLP"), Rebalanci
         uint256 shares,
         uint256 deadline
     ) external nonReentrant returns (uint256 exitETH) {
-        exitETH = _withdrawETH(beneficiary, shares, deadline);
+        exitETH = _withdraw(msg.sender, beneficiary, shares, deadline);
         IERC20(WETH).safeTransfer(beneficiary, exitETH);
     }
 
@@ -103,13 +103,13 @@ contract NexusLPSushi is ERC20("Nexus LP SushiSwap ETH/USDC", "NSLP"), Rebalanci
         nonReentrant
         returns (uint256 exitETH)
     {
-        exitETH = _withdrawETH(beneficiary, balanceOf(msg.sender), deadline);
+        exitETH = _withdraw(msg.sender, beneficiary, balanceOf(msg.sender), deadline);
         IWETH(WETH).withdraw(exitETH);
         Address.sendValue(beneficiary, exitETH);
     }
 
     function removeAllLiquidity(address beneficiary, uint256 deadline) external nonReentrant returns (uint256 exitETH) {
-        exitETH = _withdrawETH(beneficiary, balanceOf(msg.sender), deadline);
+        exitETH = _withdraw(msg.sender, beneficiary, balanceOf(msg.sender), deadline);
         IERC20(WETH).safeTransfer(beneficiary, exitETH);
     }
 
@@ -151,7 +151,7 @@ contract NexusLPSushi is ERC20("Nexus LP SushiSwap ETH/USDC", "NSLP"), Rebalanci
         emit CompoundProfits(msg.sender, liquidity);
     }
 
-    function _depositETH(
+    function _deposit(
         address beneficiary,
         uint256 amountETH,
         uint256 deadline
@@ -186,18 +186,19 @@ contract NexusLPSushi is ERC20("Nexus LP SushiSwap ETH/USDC", "NSLP"), Rebalanci
         emit Mint(msg.sender, beneficiary, liquidity, shares);
     }
 
-    function _withdrawETH(
+    function _withdraw(
+        address sender,
         address beneficiary,
         uint256 shares,
         uint256 deadline
     ) internal returns (uint256 exitETH) {
-        Minter storage minter = minters[msg.sender];
-        shares = Math.min(shares, minter.shares); // handles the case of transferred shares, only the original minter shares count
+        Minter storage minter = minters[sender];
+        shares = Math.min(shares, minter.shares); // handles the case of transferred shares, only the original minter shares can be burned
         require(shares > 0, "sender not in minters");
 
         uint256 liquidity = shares.mul(totalLiquidity).div(totalSupply());
 
-        _burn(msg.sender, shares);
+        _burn(sender, shares);
 
         (uint256 removedETH, uint256 removedUSDC) = _poolUnstakeAndRemoveLiquidity(liquidity, deadline);
 
@@ -214,13 +215,19 @@ contract NexusLPSushi is ERC20("Nexus LP SushiSwap ETH/USDC", "NSLP"), Rebalanci
         totalInvestedETH = totalInvestedETH.sub(entryETH);
         totalLiquidity = totalLiquidity.sub(liquidity);
 
-        emit Burn(msg.sender, beneficiary, exitUSDC, exitETH, liquidity, shares);
+        emit Burn(sender, beneficiary, exitUSDC, exitETH, liquidity, shares);
     }
 
-    function emergencyExit() external onlyOwner {
-        _poolUnstakeAndRemoveLiquidity(totalLiquidity, block.timestamp); // solhint-disable-line not-rely-on-time
+    function emergencyExit(address[] memory _minters) external onlyOwner {
+        if (!paused()) _pause();
+
+        for (uint256 i = 0; i < _minters.length; i++) {
+            address minter = _minters[i];
+            uint256 shares = balanceOf(minter);
+            if (shares > 0) {
+                _withdraw(minter, minter, shares, block.timestamp); // solhint-disable-line not-rely-on-time
+            }
+        }
         withdrawFreeCapital();
-        totalLiquidity = 0;
-        totalInvestedUSDC = 0;
     }
 }
