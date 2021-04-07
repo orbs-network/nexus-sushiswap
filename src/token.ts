@@ -15,6 +15,10 @@ export namespace Tokens {
   export function SUSHI() {
     return newToken("$SUSHI", "0x6B3595068778DD592e39A122f4f5a5cF09C90fE2");
   }
+
+  export function DAI() {
+    return newToken("$DAI", "0x6B175474E89094C44Da98b954EedeAC495271d0F");
+  }
 }
 
 export interface Token extends ERC20 {

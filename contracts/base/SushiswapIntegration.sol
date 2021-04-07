@@ -112,4 +112,8 @@ contract SushiswapIntegration is LiquidityNexusBase {
     function _poolClaimRewards() internal {
         IMasterChef(MASTERCHEF).deposit(POOL_ID, 0);
     }
+
+    function isSalvagable(address token) internal override returns (bool) {
+        return super.isSalvagable(token) && token != SLP && token != REWARD;
+    }
 }

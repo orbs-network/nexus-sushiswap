@@ -157,7 +157,7 @@ contract NexusLPSushiUSDC is ERC20("NexusLPSushiUSDC", "NSLP"), RebalancingStrat
 
     function _withdrawETH(uint256 shares, uint256 deadline) internal returns (uint256 exitETH) {
         Minter storage minter = minters[msg.sender];
-        shares = Math.min(shares, minter.shares);
+        shares = Math.min(shares, minter.shares); // handles the case of transferred shares, only the original minter shares count
         require(shares > 0, "sender not in minters");
 
         uint256 liquidity = shares.mul(totalLiquidity).div(totalSupply());

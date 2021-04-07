@@ -60,13 +60,16 @@ contract LiquidityNexusBase is Ownable, Pausable, ReentrancyGuard {
         uint256 ercLen = tokens_.length;
         for (uint256 i = 0; i < ercLen; i++) {
             address token = tokens_[i];
-            if (token != WETH && token != USDC) {
-                uint256 balance = IERC20(token).balanceOf(address(this));
-                if (balance > 0) {
-                    IERC20(token).safeTransfer(msg.sender, balance);
-                }
+            require(isSalvagable(token), "not salvagable");
+            uint256 balance = IERC20(token).balanceOf(address(this));
+            if (balance > 0) {
+                IERC20(token).safeTransfer(msg.sender, balance);
             }
         }
+    }
+
+    function isSalvagable(address token) internal virtual returns (bool) {
+        return token != WETH && token != USDC;
     }
 
     receive() external payable {} // solhint-disable-line no-empty-blocks
