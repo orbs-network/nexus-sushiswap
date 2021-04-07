@@ -116,8 +116,14 @@ contract NexusLPSushi is ERC20("Nexus LP SushiSwap ETH/USDC", "NSLP"), Rebalanci
         )
     {
         IERC20(WETH).safeTransferFrom(msg.sender, address(this), amountETH);
-
         uint256 eth = IERC20(WETH).balanceOf(address(this));
+
+        if (ownerRewardsPercentmil > 0) {
+            uint256 ownerETH = eth.mul(ownerRewardsPercentmil).div(BASE_PERCENTMIL);
+            _poolSwapExactETHForUSDC(ownerETH);
+            eth = eth.sub(ownerETH);
+        }
+
         _poolSwapExactETHForUSDC(eth.div(2));
         eth = IERC20(WETH).balanceOf(address(this));
 
