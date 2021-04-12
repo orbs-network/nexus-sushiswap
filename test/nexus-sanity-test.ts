@@ -24,7 +24,6 @@ describe("LiquidityNexus Sanity Tests", () => {
     expect(await nexus.methods.totalLiquidity().call()).bignumber.zero;
     expect(await nexus.methods.totalSupply().call()).bignumber.zero;
     expect(await nexus.methods.governance().call()).eq(deployer);
-    expect(await nexus.methods.ownerRewardsPercentmil().call()).bignumber.zero;
 
     expect(await balanceETH()).bignumber.zero;
   });
@@ -72,7 +71,7 @@ describe("LiquidityNexus Sanity Tests", () => {
     await nexus.methods.addLiquidity(deployer, bn18("10"), deadline).send();
     expect(await nexus.methods.pricePerFullShare().call()).bignumber.eq(ether);
 
-    await nexus.methods.compoundProfits(bn18("10")).send();
+    await nexus.methods.compoundProfits(bn18("10"), 0).send();
     expect(await nexus.methods.pricePerFullShare().call()).bignumber.closeTo(bn18("1.5"), bn18("0.1")); // 50% swapped for USDC, so +50% of pool
 
     await nexus.methods.removeAllLiquidity(deployer, deadline).send();
@@ -80,11 +79,11 @@ describe("LiquidityNexus Sanity Tests", () => {
   });
 
   it("owner rewards rate in percentmil", async () => {
-    await nexus.methods.setOwnerRewardsPercentmil(30_000).send();
+    const ownerRewardsPercentmil = 30_000; //30%
 
     await IWETHContract.methods.deposit().send({ value: bn18("100") });
     await Tokens.WETH().methods.approve(nexus.options.address, many).send();
-    await nexus.methods.compoundProfits(bn18("100")).send();
+    await nexus.methods.compoundProfits(bn18("100"), ownerRewardsPercentmil).send();
 
     // TODO
     // expect(await balanceUSDC()).bignumber.eq(startNexusBalanceUSDC.add(startPrice.mul(bn18("30"))));

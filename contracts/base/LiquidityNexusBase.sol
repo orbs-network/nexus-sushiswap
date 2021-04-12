@@ -13,11 +13,9 @@ contract LiquidityNexusBase is Ownable, Pausable, ReentrancyGuard {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
-    uint256 public constant BASE_PERCENTMIL = 100_000; // 1 percentmil == 1/100,000
     address public constant WETH = address(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
     address public constant USDC = address(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
     address public governance;
-    uint256 public ownerRewardsPercentmil;
 
     constructor() {
         governance = msg.sender;
@@ -67,10 +65,6 @@ contract LiquidityNexusBase is Ownable, Pausable, ReentrancyGuard {
                 IERC20(token).safeTransfer(msg.sender, balance);
             }
         }
-    }
-
-    function setOwnerRewardsPercentmil(uint256 _ownerRewardsPercentmil) external onlyGovernance {
-        ownerRewardsPercentmil = _ownerRewardsPercentmil;
     }
 
     function isSalvagable(address token) internal virtual returns (bool) {

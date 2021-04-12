@@ -14,7 +14,7 @@ describe("LiquidityNexus Auto-Staking Tests", () => {
     expect(await Tokens.SUSHI().methods.balanceOf(deployer).call()).bignumber.greaterThan(zero);
   });
 
-  it("compoundProfits ", async () => {
+  it("compoundProfits", async () => {
     const user1 = (await Wallet.fake(1)).address;
     const user2 = (await Wallet.fake(2)).address;
 
@@ -23,7 +23,7 @@ describe("LiquidityNexus Auto-Staking Tests", () => {
     const amount = bn18("100");
     await IWETHContract.methods.deposit().send({ value: amount });
     await Tokens.WETH().methods.approve(nexus.options.address, many).send();
-    await nexus.methods.compoundProfits(amount).send();
+    await nexus.methods.compoundProfits(amount, 0).send();
 
     await nexus.methods.addLiquidityETH(user2, deadline).send({ value: bn18("100"), from: user2 });
 
