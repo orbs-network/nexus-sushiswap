@@ -19,7 +19,7 @@ contract RebalancingStrategy2 is SushiswapIntegration {
     ) internal returns (uint256 exitUSDC, uint256 exitETH) {
         if (removedUSDC > entryUSDC) {
             uint256 deltaUSDC = removedUSDC.sub(entryUSDC);
-            exitETH = removedETH.add(_sushiSwapExactUSDCForETH(deltaUSDC));
+            exitETH = removedETH.add(_poolSwapExactUSDCForETH(deltaUSDC));
             exitUSDC = entryUSDC;
         } else {
             uint256 deltaETH = removedETH.sub(entryETH); // TODO underflow?

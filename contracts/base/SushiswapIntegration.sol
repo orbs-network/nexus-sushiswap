@@ -53,7 +53,7 @@ contract SushiswapIntegration is LiquidityNexusBase {
         inETH = IUniswapV2Router02(ROUTER).getAmountsIn(outUSDC, pathToUSDC)[0];
     }
 
-    function _sushiSwapExactUSDCForETH(uint256 inUSDC) internal returns (uint256 outETH) {
+    function _poolSwapExactUSDCForETH(uint256 inUSDC) internal returns (uint256 outETH) {
         if (inUSDC == 0) return 0;
 
         uint256[] memory amounts =
