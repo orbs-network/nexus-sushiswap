@@ -49,12 +49,13 @@ export async function advanceTime(seconds: number) {
     await network().provider.send("evm_increaseTime", [secondsPerBlock]);
     await network().provider.send("evm_mine", [1 + startBlockTime + secondsPerBlock * i]);
   }
-  console.log("was block", startBlock.toFixed(), "now block", await web3().eth.getBlockNumber());
+  const nowBlock = await web3().eth.getBlockNumber();
+  console.log("was block", startBlock.toFixed(), "now block", nowBlock);
   console.log(
     "was block time",
     startBlockTime.toFixed(),
     "now block time",
-    (await web3().eth.getBlock(startBlock)).timestamp
+    (await web3().eth.getBlock(nowBlock)).timestamp
   );
 }
 

@@ -138,7 +138,6 @@ contract NexusLPSushi is ERC20("Nexus LP SushiSwap ETH/USDC", "NSLP"), Rebalanci
             uint256 ownerETH = eth.mul(capitalProviderRewardPercentmil).div(100_000);
             _poolSwapExactETHForUSDC(ownerETH);
             eth = IERC20(WETH).balanceOf(address(this));
-            // TODO how to differentiate??
         }
 
         _poolSwapExactETHForUSDC(eth.div(2));
