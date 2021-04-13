@@ -39,10 +39,23 @@ export async function resetFakeNetworkFork(blockNumber: number = forkingBlockNum
 }
 
 export async function advanceTime(seconds: number) {
-  const b = await web3().eth.getBlockNumber();
   console.log(`advancing time by ${seconds} seconds`);
-  await network().provider.send("evm_increaseTime", [seconds]);
-  await network().provider.send("evm_mine", [(await web3().eth.getBlock(b)).timestamp + seconds]);
+  const startBlock = await web3().eth.getBlockNumber();
+  const startBlockTime = (await web3().eth.getBlock(startBlock)).timestamp;
+
+  const secondsPerBlock = 13;
+  const blocks = Math.round(seconds / secondsPerBlock);
+  for (let i = 0; i < blocks; i++) {
+    await network().provider.send("evm_increaseTime", [secondsPerBlock]);
+    await network().provider.send("evm_mine", [1 + startBlockTime + secondsPerBlock * i]);
+  }
+  console.log("was block", startBlock.toFixed(), "now block", await web3().eth.getBlockNumber());
+  console.log(
+    "was block time",
+    startBlockTime.toFixed(),
+    "now block time",
+    (await web3().eth.getBlock(startBlock)).timestamp
+  );
 }
 
 export function parseEvents(abis: any[], address: string, tx: TransactionReceipt) {
