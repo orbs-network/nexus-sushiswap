@@ -191,7 +191,7 @@ describe("RebalancingStrategy1: rebalance usd/eth such that eth provider takes a
 
     expect(await nexus.methods.totalInvestedUSDC().call()).bignumber.zero;
     expect(await nexus.methods.totalInvestedETH().call()).bignumber.zero;
-    expect(await balanceUSDC()).bignumber.closeTo(bn6("9,934,000"), bn6("1,000")); // loss
+    expect(await balanceUSDC()).bignumber.lt(startNexusBalanceUSDC.sub(bn6("10,000"))); // loss of at least 10k
   });
 
   it("price drop + interest", async () => {

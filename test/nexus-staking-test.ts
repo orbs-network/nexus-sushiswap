@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import { Tokens } from "../src/token";
 import { deadline, deployer, IWETHContract, nexus, sushiRouter } from "./test-base";
-import { bn, bn18, ether, many } from "../src/utils";
+import { bn18, ether, many } from "../src/utils";
 import { advanceTime, web3 } from "../src/network";
 import { Wallet } from "../src/wallet";
 
@@ -11,7 +11,7 @@ describe("LiquidityNexus Auto-Staking Tests", () => {
     await Tokens.WETH().methods.approve(nexus.options.address, many).send();
   });
 
-  it.only("doHardWork", async () => {
+  it("doHardWork", async () => {
     expect(await Tokens.SUSHI().methods.balanceOf(deployer).call()).bignumber.zero;
     expect(await Tokens.WETH().methods.balanceOf(deployer).call()).bignumber.zero;
 
@@ -25,8 +25,6 @@ describe("LiquidityNexus Auto-Staking Tests", () => {
       bn18("100"),
       ether
     );
-
-    console.log(bn(await Tokens.USDC().methods.balanceOf(nexus.options.address).call()).toNumber());
   });
 
   it("compoundProfits 2 users", async () => {
@@ -53,7 +51,6 @@ describe("LiquidityNexus Auto-Staking Tests", () => {
   });
 });
 
-// This simulates Harvest Strategy doHardWork
 async function doHardWork() {
   await nexus.methods.claimRewards().send();
 
