@@ -137,8 +137,8 @@ export async function simulateInterestAccumulation() {
 
 async function supplyCapitalAsDeployer(amount: BN) {
   await ensureUsdBalance(deployer, amount);
-  await Tokens.USDC().methods.approve(nexus.options.address, many).send();
-  await nexus.methods.depositAllCapital().send();
+  await Tokens.USDC().methods.approve(nexus.options.address, many).send({ from: deployer });
+  await nexus.methods.depositAllCapital().send({ from: deployer });
 }
 
 /**
