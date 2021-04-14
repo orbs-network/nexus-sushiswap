@@ -31,20 +31,20 @@ describe("LiquidityNexus with Sushiswap single sided ETH/USDC e2e", () => {
     expect(await user.getBalance()).bignumber.closeTo(startBalance.sub(bn18("10")), ether);
 
     let account = await nexus.methods.minters(user.address).call();
-    expect(account.entryETH).bignumber.closeTo(bn18("10"), bn18("0.1"));
-    expect(account.entryUSDC).not.bignumber.zero;
+    expect(account.pairedETH).bignumber.closeTo(bn18("10"), bn18("0.1"));
+    expect(account.pairedUSDC).not.bignumber.zero;
     expect(await nexus.methods.totalSupply().call())
       .bignumber.eq(await nexus.methods.totalLiquidity().call())
-      .bignumber.eq(account.shares);
+      .bignumber.eq(account.pairedShares);
 
     await nexus.methods.removeAllLiquidityETH(user.address, deadline).send({ from: user.address });
     expect(await user.getBalance()).bignumber.closeTo(startBalance, bn18("0.1"));
 
     expect(await nexus.methods.totalSupply().call()).eq(await nexus.methods.totalLiquidity().call()).bignumber.zero;
     account = await nexus.methods.minters(user.address).call();
-    expect(account.entryETH).bignumber.zero;
-    expect(account.entryUSDC).bignumber.zero;
-    expect(account.shares).bignumber.zero;
+    expect(account.pairedETH).bignumber.zero;
+    expect(account.pairedUSDC).bignumber.zero;
+    expect(account.pairedShares).bignumber.zero;
 
     expect(await balanceETH()).bignumber.zero;
     expect(await balanceUSDC()).bignumber.eq(startNexusBalanceUSDC);

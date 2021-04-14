@@ -25,15 +25,16 @@ contract NexusLPSushi is ERC20("Nexus LP SushiSwap ETH/USDC", "NSLP"), Rebalanci
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
-    event Mint(address indexed sender, address indexed beneficiary, uint256 liquidity, uint256 shares);
-    event Burn(
+    event Mint(address indexed sender, address indexed beneficiary, uint256 shares);
+    event Burn(address indexed sender, address indexed beneficiary, uint256 shares);
+    event Pair(
         address indexed sender,
-        address indexed beneficiary,
-        uint256 exitUSDC,
-        uint256 exitETH,
-        uint256 liquidity,
-        uint256 shares
+        address indexed minter,
+        uint256 pairedUSDC,
+        uint256 pairedETH,
+        uint256 liquidity
     );
+    event Unpair(address indexed sender, address indexed minter, uint256 exitUSDC, uint256 exitETH, uint256 liquidity);
     event ClaimRewards(address indexed sender, uint256 amount);
     event CompoundProfits(address indexed sender, uint256 liquidity);
 
@@ -43,14 +44,17 @@ contract NexusLPSushi is ERC20("Nexus LP SushiSwap ETH/USDC", "NSLP"), Rebalanci
      * must also call removeLiquidity.
      */
     struct Minter {
-        uint256 entryETH;
-        uint256 entryUSDC;
-        uint256 shares;
+        uint256 pairedETH;
+        uint256 pairedUSDC;
+        uint256 pairedShares;
+        uint256 unpairedETH;
+        uint256 unpairedShares;
     }
 
     uint256 public totalLiquidity;
-    uint256 public totalInvestedUSDC;
-    uint256 public totalInvestedETH;
+    uint256 public totalPairedUSDC;
+    uint256 public totalPairedETH;
+    uint256 public totalPairedShares;
     mapping(address => Minter) public minters;
 
     /**
@@ -75,20 +79,10 @@ contract NexusLPSushi is ERC20("Nexus LP SushiSwap ETH/USDC", "NSLP"), Rebalanci
     /**
      * Depositors only deposit ETH. This convenience function allows to deposit ETH directly.
      */
-    function addLiquidityETH(address beneficiary, uint256 deadline)
-        external
-        payable
-        nonReentrant
-        whenNotPaused
-        returns (
-            uint256 addedUSDC,
-            uint256 addedETH,
-            uint256 shares
-        )
-    {
+    function addLiquidityETH(address beneficiary, uint256 deadline) external payable nonReentrant whenNotPaused {
         uint256 amountETH = msg.value;
         IWETH(WETH).deposit{value: amountETH}();
-        return _deposit(beneficiary, amountETH, deadline);
+        _deposit(beneficiary, amountETH, deadline);
     }
 
     /**
@@ -98,18 +92,9 @@ contract NexusLPSushi is ERC20("Nexus LP SushiSwap ETH/USDC", "NSLP"), Rebalanci
         address beneficiary,
         uint256 amountETH,
         uint256 deadline
-    )
-        external
-        nonReentrant
-        whenNotPaused
-        returns (
-            uint256 addedUSDC,
-            uint256 addedETH,
-            uint256 shares
-        )
-    {
+    ) external nonReentrant whenNotPaused {
         IERC20(WETH).safeTransferFrom(msg.sender, address(this), amountETH);
-        return _deposit(beneficiary, amountETH, deadline);
+        _deposit(beneficiary, amountETH, deadline);
     }
 
     /**
@@ -187,8 +172,8 @@ contract NexusLPSushi is ERC20("Nexus LP SushiSwap ETH/USDC", "NSLP"), Rebalanci
         nonReentrant
         onlyGovernance
         returns (
-            uint256 addedUSDC,
-            uint256 addedETH,
+            uint256 pairedUSDC,
+            uint256 pairedETH,
             uint256 liquidity
         )
     {
@@ -204,10 +189,11 @@ contract NexusLPSushi is ERC20("Nexus LP SushiSwap ETH/USDC", "NSLP"), Rebalanci
         _poolSwapExactETHForUSDC(eth.div(2));
         eth = IERC20(WETH).balanceOf(address(this));
 
-        (addedUSDC, addedETH, liquidity) = _poolAddLiquidityAndStake(eth, block.timestamp); // solhint-disable-line not-rely-on-time
-        totalInvestedUSDC = totalInvestedUSDC.add(addedUSDC);
-        totalInvestedETH = totalInvestedETH.add(addedETH);
+        (pairedUSDC, pairedETH, liquidity) = _poolAddLiquidityAndStake(eth, block.timestamp); // solhint-disable-line not-rely-on-time
+        totalPairedUSDC = totalPairedUSDC.add(pairedUSDC);
+        totalPairedETH = totalPairedETH.add(pairedETH);
         totalLiquidity = totalLiquidity.add(liquidity);
+        // not adding to shares to distribute rewards to all shareholders
 
         emit CompoundProfits(msg.sender, liquidity);
     }
@@ -216,16 +202,22 @@ contract NexusLPSushi is ERC20("Nexus LP SushiSwap ETH/USDC", "NSLP"), Rebalanci
         address beneficiary,
         uint256 amountETH,
         uint256 deadline
-    )
-        internal
-        returns (
-            uint256 addedUSDC,
-            uint256 addedETH,
-            uint256 shares
-        )
-    {
-        uint256 liquidity;
-        (addedUSDC, addedETH, liquidity) = _poolAddLiquidityAndStake(amountETH, deadline);
+    ) private {
+        Minter storage minter = minters[beneficiary];
+
+        uint256 shares = _pair(beneficiary, minter, amountETH, deadline);
+
+        _mint(beneficiary, shares);
+        emit Mint(msg.sender, beneficiary, shares);
+    }
+
+    function _pair(
+        address minterAddress,
+        Minter storage minter,
+        uint256 amountETH,
+        uint256 deadline
+    ) private returns (uint256 shares) {
+        (uint256 pairedUSDC, uint256 pairedETH, uint256 liquidity) = _poolAddLiquidityAndStake(amountETH, deadline);
 
         if (totalSupply() == 0) {
             shares = liquidity;
@@ -233,18 +225,16 @@ contract NexusLPSushi is ERC20("Nexus LP SushiSwap ETH/USDC", "NSLP"), Rebalanci
             shares = liquidity.mul(totalSupply()).div(totalLiquidity);
         }
 
-        totalInvestedUSDC = totalInvestedUSDC.add(addedUSDC);
-        totalInvestedETH = totalInvestedETH.add(addedETH);
+        minter.pairedUSDC = minter.pairedUSDC.add(pairedUSDC);
+        minter.pairedETH = minter.pairedETH.add(pairedETH);
+        minter.pairedShares = minter.pairedShares.add(shares);
+
+        totalPairedUSDC = totalPairedUSDC.add(pairedUSDC);
+        totalPairedETH = totalPairedETH.add(pairedETH);
+        totalPairedShares = totalPairedShares.add(shares);
         totalLiquidity = totalLiquidity.add(liquidity);
 
-        Minter storage minter = minters[beneficiary];
-        minter.entryUSDC = minter.entryUSDC.add(addedUSDC);
-        minter.entryETH = minter.entryETH.add(addedETH);
-        minter.shares = minter.shares.add(shares);
-
-        _mint(beneficiary, shares);
-
-        emit Mint(msg.sender, beneficiary, liquidity, shares);
+        emit Pair(msg.sender, minterAddress, pairedUSDC, pairedETH, liquidity);
     }
 
     function _withdraw(
@@ -252,31 +242,48 @@ contract NexusLPSushi is ERC20("Nexus LP SushiSwap ETH/USDC", "NSLP"), Rebalanci
         address beneficiary,
         uint256 shares,
         uint256 deadline
-    ) internal returns (uint256 exitETH) {
+    ) private returns (uint256 exitETH) {
         Minter storage minter = minters[sender];
-        shares = Math.min(shares, minter.shares); // handles the case of transferred shares, only the original minter shares can be burned
+        shares = Math.min(shares, minter.pairedShares.add(minter.unpairedShares));
         require(shares > 0, "sender not in minters");
 
-        uint256 liquidity = shares.mul(totalLiquidity).div(totalSupply());
+        if (shares > minter.unpairedShares) {
+            _unpair(sender, minter, shares.sub(minter.unpairedShares), deadline);
+        }
+
+        exitETH = shares.mul(minter.unpairedETH).div(minter.unpairedShares);
+        minter.unpairedShares = minter.unpairedShares.sub(shares);
 
         _burn(sender, shares);
+        emit Burn(sender, beneficiary, shares);
+    }
 
+    function _unpair(
+        address minterAddress,
+        Minter storage minter,
+        uint256 shares,
+        uint256 deadline
+    ) private {
+        uint256 liquidity = shares.mul(totalLiquidity).div(totalPairedShares);
         (uint256 removedETH, uint256 removedUSDC) = _poolUnstakeAndRemoveLiquidity(liquidity, deadline);
 
-        uint256 entryUSDC = minter.entryUSDC.mul(shares).div(minter.shares);
-        uint256 entryETH = minter.entryETH.mul(shares).div(minter.shares);
-        uint256 exitUSDC;
-        (exitUSDC, exitETH) = applyRebalance(removedUSDC, removedETH, entryUSDC, entryETH);
+        uint256 pairedUSDC = minter.pairedUSDC.mul(shares).div(minter.pairedShares);
+        uint256 pairedETH = minter.pairedETH.mul(shares).div(minter.pairedShares);
+        (uint256 exitUSDC, uint256 exitETH) = applyRebalance(removedUSDC, removedETH, pairedUSDC, pairedETH);
 
-        minter.entryUSDC = minter.entryUSDC.sub(entryUSDC);
-        minter.entryETH = minter.entryETH.sub(entryETH);
-        minter.shares = minter.shares.sub(shares);
+        minter.pairedUSDC = minter.pairedUSDC.sub(pairedUSDC);
+        minter.pairedETH = minter.pairedETH.sub(pairedETH);
+        minter.pairedShares = minter.pairedShares.sub(shares);
 
-        totalInvestedUSDC = totalInvestedUSDC.sub(entryUSDC);
-        totalInvestedETH = totalInvestedETH.sub(entryETH);
+        minter.unpairedETH = minter.unpairedETH.add(exitETH);
+        minter.unpairedShares = minter.unpairedShares.add(shares);
+
+        totalPairedUSDC = totalPairedUSDC.sub(pairedUSDC);
+        totalPairedETH = totalPairedETH.sub(pairedETH);
+        totalPairedShares = totalPairedShares.sub(shares);
         totalLiquidity = totalLiquidity.sub(liquidity);
 
-        emit Burn(sender, beneficiary, exitUSDC, exitETH, liquidity, shares);
+        emit Unpair(msg.sender, minterAddress, exitUSDC, exitETH, liquidity);
     }
 
     /**
@@ -284,10 +291,17 @@ contract NexusLPSushi is ERC20("Nexus LP SushiSwap ETH/USDC", "NSLP"), Rebalanci
      * When called, all Sushi LP is burned to extract ETH+USDC, the USDC part is returned to owner.
      * The ETH will wait in the contract until the original ETH depositors will remove it.
      */
-    function emergencyExit(address[] memory _minters) external onlyOwner {
+    function emergencyExit(address[] memory minterAddresses) external onlyOwner {
         if (!paused()) _pause();
 
-        // TODO
+        for (uint256 i = 0; i < minterAddresses.length; i++) {
+            address minterAddress = minterAddresses[i];
+            Minter storage minter = minters[minterAddress];
+            uint256 shares = minter.pairedShares;
+            if (shares > 0) {
+                _unpair(minterAddress, minter, shares, block.timestamp); //solhint-disable-line not-rely-on-time
+            }
+        }
 
         withdrawFreeCapital();
     }

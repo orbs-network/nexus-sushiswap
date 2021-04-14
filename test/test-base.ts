@@ -90,7 +90,7 @@ export async function balanceWETH(address: string = nexus.options.address) {
 }
 
 export async function totalInvestedUSDC() {
-  return bn(await nexus.methods.totalInvestedUSDC().call());
+  return bn(await nexus.methods.totalPairedUSDC().call());
 }
 
 /**

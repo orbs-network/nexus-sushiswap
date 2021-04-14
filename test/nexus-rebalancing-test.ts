@@ -47,7 +47,7 @@ describe("RebalancingStrategy1: rebalance usd/eth such that eth provider takes a
     const ethInvested = startDeployerBalanceETH.sub(await balanceETH(deployer));
     expect(ethInvested).bignumber.closeTo(bn18("200"), bn18("0.01"));
 
-    const shares0 = bn((await nexus.methods.minters(deployer).call()).shares);
+    const shares0 = bn((await nexus.methods.minters(deployer).call()).pairedShares);
     expect(await nexus.methods.removeLiquidityETH(deployer, shares0.divn(2), deadline).call()).bignumber.closeTo(
       bn18("98.3"),
       bn18("0.1")
@@ -61,10 +61,14 @@ describe("RebalancingStrategy1: rebalance usd/eth such that eth provider takes a
     await nexus.methods.removeAllLiquidityETH(deployer, deadline).send();
     expect(await balanceETH(deployer)).bignumber.closeTo(startDeployerBalanceETH.sub(bn18("4")), bn18("1")); // from IL + gas
 
-    const { entryETH, entryUSDC, shares } = await nexus.methods.minters(deployer).call();
-    expect(shares).bignumber.zero;
-    expect(entryETH).bignumber.zero;
-    expect(entryUSDC).bignumber.zero;
+    const { pairedETH, pairedUSDC, pairedShares, unpairedShares, unpairedETH } = await nexus.methods
+      .minters(deployer)
+      .call();
+    expect(pairedShares).bignumber.zero;
+    expect(pairedETH).bignumber.zero;
+    expect(pairedUSDC).bignumber.zero;
+    expect(unpairedETH).bignumber.zero;
+    expect(unpairedShares).bignumber.zero;
     expect(await totalInvestedUSDC()).bignumber.zero;
   });
 
@@ -146,8 +150,8 @@ describe("RebalancingStrategy1: rebalance usd/eth such that eth provider takes a
     );
     await nexus.methods.removeAllLiquidityETH(user2, deadline).send({ from: user2 });
 
-    expect(await nexus.methods.totalInvestedUSDC().call()).bignumber.zero;
-    expect(await nexus.methods.totalInvestedETH().call()).bignumber.zero;
+    expect(await nexus.methods.totalPairedUSDC().call()).bignumber.zero;
+    expect(await nexus.methods.totalPairedETH().call()).bignumber.zero;
     expect(await balanceUSDC()).bignumber.eq(startNexusBalanceUSDC);
   });
 
@@ -172,8 +176,8 @@ describe("RebalancingStrategy1: rebalance usd/eth such that eth provider takes a
     );
     await nexus.methods.removeAllLiquidityETH(user2, deadline).send({ from: user2 });
 
-    expect(await nexus.methods.totalInvestedUSDC().call()).bignumber.zero;
-    expect(await nexus.methods.totalInvestedETH().call()).bignumber.zero;
+    expect(await nexus.methods.totalPairedUSDC().call()).bignumber.zero;
+    expect(await nexus.methods.totalPairedETH().call()).bignumber.zero;
     expect(await balanceUSDC()).bignumber.eq(startNexusBalanceUSDC);
   });
 
@@ -189,8 +193,8 @@ describe("RebalancingStrategy1: rebalance usd/eth such that eth provider takes a
     expect(await nexus.methods.removeAllLiquidityETH(deployer, deadline).call()).bignumber.closeTo(zero, ether);
     await nexus.methods.removeAllLiquidityETH(deployer, deadline).send();
 
-    expect(await nexus.methods.totalInvestedUSDC().call()).bignumber.zero;
-    expect(await nexus.methods.totalInvestedETH().call()).bignumber.zero;
+    expect(await nexus.methods.totalPairedUSDC().call()).bignumber.zero;
+    expect(await nexus.methods.totalPairedETH().call()).bignumber.zero;
     expect(await balanceUSDC()).bignumber.lt(startNexusBalanceUSDC.sub(bn6("10,000"))); // loss of at least 10k
   });
 
@@ -203,8 +207,8 @@ describe("RebalancingStrategy1: rebalance usd/eth such that eth provider takes a
     expect(await nexus.methods.removeAllLiquidityETH(deployer, deadline).call()).bignumber.closeTo(bn18("106"), ether);
     await nexus.methods.removeAllLiquidityETH(deployer, deadline).send();
 
-    expect(await nexus.methods.totalInvestedUSDC().call()).bignumber.zero;
-    expect(await nexus.methods.totalInvestedETH().call()).bignumber.zero;
+    expect(await nexus.methods.totalPairedUSDC().call()).bignumber.zero;
+    expect(await nexus.methods.totalPairedETH().call()).bignumber.zero;
     expect(await balanceUSDC()).bignumber.eq(startNexusBalanceUSDC);
   });
 });

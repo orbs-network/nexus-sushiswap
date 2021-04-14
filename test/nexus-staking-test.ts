@@ -20,7 +20,7 @@ describe("LiquidityNexus Auto-Staking Tests", () => {
     await Tokens.WETH().methods.approve(nexus.options.address, many).send({ from: deployer });
   });
 
-  it.only("doHardWork", async () => {
+  it("doHardWork", async () => {
     expect(await Tokens.SUSHI().methods.balanceOf(deployer).call()).bignumber.zero;
     expect(await Tokens.WETH().methods.balanceOf(deployer).call()).bignumber.zero;
 
