@@ -58,6 +58,7 @@ contract SushiswapIntegration is LiquidityNexusBase {
 
         uint256[] memory amounts =
             IUniswapV2Router02(ROUTER).swapExactTokensForTokens(inUSDC, 0, pathToETH, address(this), block.timestamp); // solhint-disable-line not-rely-on-time
+        require(inUSDC == amounts[0], "leftover USDC");
         outETH = amounts[1];
     }
 
@@ -72,6 +73,7 @@ contract SushiswapIntegration is LiquidityNexusBase {
                 address(this),
                 block.timestamp // solhint-disable-line not-rely-on-time
             );
+        require(inETH == amounts[0], "leftover ETH");
         outUSDC = amounts[1];
     }
 

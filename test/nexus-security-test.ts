@@ -40,7 +40,7 @@ describe("LiquidityNexus Security Tests", () => {
 
   it("gracefully handle invalid input shares", async () => {
     await nexus.methods.addLiquidityETH(deployer, deadline).send({ value: bn18("10") });
-    const shares = bn((await nexus.methods.minters(deployer).call()).pairedShares);
+    const shares = bn(await nexus.methods.balanceOf(deployer).call());
     await nexus.methods.removeLiquidityETH(deployer, shares.muln(10), deadline).send(); // just ignore any shares above allocated, due to (for example) transfers
 
     expect(await balanceETH(deployer)).bignumber.closeTo(startDeployerBalanceETH, ether);

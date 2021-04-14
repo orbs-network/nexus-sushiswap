@@ -47,19 +47,21 @@ describe("RebalancingStrategy1: rebalance usd/eth such that eth provider takes a
     const ethInvested = startDeployerBalanceETH.sub(await balanceETH(deployer));
     expect(ethInvested).bignumber.closeTo(bn18("200"), bn18("0.01"));
 
-    const shares0 = bn((await nexus.methods.minters(deployer).call()).pairedShares);
-    expect(await nexus.methods.removeLiquidityETH(deployer, shares0.divn(2), deadline).call()).bignumber.closeTo(
+    const nexusLpBalance = bn(await nexus.methods.balanceOf(deployer).call());
+    expect(await nexus.methods.removeLiquidityETH(deployer, nexusLpBalance.divn(2), deadline).call()).bignumber.closeTo(
       bn18("98.3"),
       bn18("0.1")
     );
-    await nexus.methods.removeLiquidityETH(deployer, shares0.divn(2), deadline).send();
+    await nexus.methods.removeLiquidityETH(deployer, nexusLpBalance.divn(2), deadline).send();
+
+    await changeEthPrice(50);
 
     expect(await nexus.methods.removeAllLiquidityETH(deployer, deadline).call()).bignumber.closeTo(
-      bn18("98.3"),
+      bn18("92.7"),
       bn18("0.1")
     );
     await nexus.methods.removeAllLiquidityETH(deployer, deadline).send();
-    expect(await balanceETH(deployer)).bignumber.closeTo(startDeployerBalanceETH.sub(bn18("4")), bn18("1")); // from IL + gas
+    expect(await balanceETH(deployer)).bignumber.closeTo(startDeployerBalanceETH.sub(bn18("9")), ether); // from IL + gas
 
     const { pairedETH, pairedUSDC, pairedShares, unpairedShares, unpairedETH } = await nexus.methods
       .minters(deployer)
@@ -69,6 +71,8 @@ describe("RebalancingStrategy1: rebalance usd/eth such that eth provider takes a
     expect(pairedUSDC).bignumber.zero;
     expect(unpairedETH).bignumber.zero;
     expect(unpairedShares).bignumber.zero;
+    expect(await nexus.methods.totalSupply().call()).bignumber.zero;
+    expect(await nexus.methods.totalPairedShares().call()).bignumber.zero;
     expect(await totalInvestedUSDC()).bignumber.zero;
   });
 

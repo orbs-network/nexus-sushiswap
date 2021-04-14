@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "./RebalancingStrategy1.sol";
+import "hardhat/console.sol";
 
 /**
  * This contract is part of Orbs Liquidity Nexus protocol. It is a thin wrapper over
@@ -72,8 +73,8 @@ contract NexusLPSushi is ERC20("Nexus LP SushiSwap ETH/USDC", "NSLP"), Rebalanci
      * This view function shows this number that should be above 1 at all times.
      */
     function pricePerFullShare() external view returns (uint256) {
-        if (totalSupply() == 0) return 0;
-        return uint256(1e18).mul(totalLiquidity).div(totalSupply());
+        if (totalPairedShares == 0) return 0;
+        return uint256(1e18).mul(totalLiquidity).div(totalPairedShares);
     }
 
     /**
@@ -135,6 +136,7 @@ contract NexusLPSushi is ERC20("Nexus LP SushiSwap ETH/USDC", "NSLP"), Rebalanci
         returns (uint256 exitETH)
     {
         exitETH = _withdraw(msg.sender, beneficiary, balanceOf(msg.sender), deadline);
+        require(exitETH <= IERC20(WETH).balanceOf(address(this)), "not enough ETH");
         IWETH(WETH).withdraw(exitETH);
         Address.sendValue(beneficiary, exitETH);
     }
@@ -178,18 +180,17 @@ contract NexusLPSushi is ERC20("Nexus LP SushiSwap ETH/USDC", "NSLP"), Rebalanci
         )
     {
         IERC20(WETH).safeTransferFrom(msg.sender, address(this), amountETH);
-        uint256 eth = IERC20(WETH).balanceOf(address(this));
 
         if (capitalProviderRewardPercentmil > 0) {
-            uint256 ownerETH = eth.mul(capitalProviderRewardPercentmil).div(100_000);
+            uint256 ownerETH = amountETH.mul(capitalProviderRewardPercentmil).div(100_000);
             _poolSwapExactETHForUSDC(ownerETH);
-            eth = IERC20(WETH).balanceOf(address(this));
+            amountETH = amountETH.sub(ownerETH);
         }
 
-        _poolSwapExactETHForUSDC(eth.div(2));
-        eth = IERC20(WETH).balanceOf(address(this));
+        amountETH = amountETH.div(2);
+        _poolSwapExactETHForUSDC(amountETH);
 
-        (pairedUSDC, pairedETH, liquidity) = _poolAddLiquidityAndStake(eth, block.timestamp); // solhint-disable-line not-rely-on-time
+        (pairedUSDC, pairedETH, liquidity) = _poolAddLiquidityAndStake(amountETH, block.timestamp); // solhint-disable-line not-rely-on-time
         totalPairedUSDC = totalPairedUSDC.add(pairedUSDC);
         totalPairedETH = totalPairedETH.add(pairedETH);
         totalLiquidity = totalLiquidity.add(liquidity);
@@ -219,10 +220,10 @@ contract NexusLPSushi is ERC20("Nexus LP SushiSwap ETH/USDC", "NSLP"), Rebalanci
     ) private returns (uint256 shares) {
         (uint256 pairedUSDC, uint256 pairedETH, uint256 liquidity) = _poolAddLiquidityAndStake(amountETH, deadline);
 
-        if (totalSupply() == 0) {
+        if (totalPairedShares == 0) {
             shares = liquidity;
         } else {
-            shares = liquidity.mul(totalSupply()).div(totalLiquidity);
+            shares = liquidity.mul(totalPairedShares).div(totalLiquidity);
         }
 
         minter.pairedUSDC = minter.pairedUSDC.add(pairedUSDC);
@@ -252,6 +253,7 @@ contract NexusLPSushi is ERC20("Nexus LP SushiSwap ETH/USDC", "NSLP"), Rebalanci
         }
 
         exitETH = shares.mul(minter.unpairedETH).div(minter.unpairedShares);
+        minter.unpairedETH = minter.unpairedETH.sub(exitETH);
         minter.unpairedShares = minter.unpairedShares.sub(shares);
 
         _burn(sender, shares);

@@ -23,6 +23,7 @@ describe("LiquidityNexus Sanity Tests", () => {
     expect(await nexus.methods.owner().call()).eq(deployer);
     expect(await nexus.methods.totalLiquidity().call()).bignumber.zero;
     expect(await nexus.methods.totalSupply().call()).bignumber.zero;
+    expect(await nexus.methods.totalPairedShares().call()).bignumber.zero;
     expect(await nexus.methods.governance().call()).eq(deployer);
 
     expect(await balanceETH()).bignumber.zero;
