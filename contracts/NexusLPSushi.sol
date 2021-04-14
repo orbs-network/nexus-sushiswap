@@ -213,6 +213,9 @@ contract NexusLPSushi is ERC20("Nexus LP SushiSwap ETH/USDC", "NSLP"), Rebalanci
         emit Mint(msg.sender, beneficiary, shares);
     }
 
+    /**
+     * Pair deposited ETH with USDC available in the contract's balance to create Sushi LP.
+     */
     function _pair(
         address minterAddress,
         Minter storage minter,
@@ -261,6 +264,9 @@ contract NexusLPSushi is ERC20("Nexus LP SushiSwap ETH/USDC", "NSLP"), Rebalanci
         emit Burn(sender, beneficiary, shares);
     }
 
+    /**
+     * Unpair ETH from USDC by burning Sushi LP and rebalancing IL between the two.
+     */
     function _unpair(
         address minterAddress,
         Minter storage minter,
