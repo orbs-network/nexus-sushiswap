@@ -46,9 +46,9 @@ contract NexusLPSushi is ERC20("Nexus LP SushiSwap ETH/USDC", "NSLP"), Rebalanci
     struct Minter {
         uint256 pairedETH;
         uint256 pairedUSDC;
-        uint256 pairedShares;
+        uint256 pairedShares; // Nexus LP tokens that represent ETH paired with USDC to create Sushi LP
         uint256 unpairedETH;
-        uint256 unpairedShares;
+        uint256 unpairedShares; // Nexus LP tokens that represent standalone ETH (waiting in this contract's balance)
     }
 
     uint256 public totalLiquidity;
@@ -99,7 +99,8 @@ contract NexusLPSushi is ERC20("Nexus LP SushiSwap ETH/USDC", "NSLP"), Rebalanci
 
     /**
      * When a depositor removes liquidity, they get ETH back. This works with ETH directly.
-     * Argument shares is the number of Nexus LP tokens to burn.
+     * Argument shares is the number of Nexus 
+     tokens to burn.
      * Note: only the original address that called addLiquidity can call removeLiquidity.
      */
     function removeLiquidityETH(
