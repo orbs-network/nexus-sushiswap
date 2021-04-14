@@ -21,7 +21,7 @@ So where does the USDC come from? USDC is sourced separately from Orbs Liquidity
 
 ### Testing
 
-The contract is thoroughly tested using [Hardhat](https://hardhat.org) on a Mainnet fork. Run the tests with:
+The contract is thoroughly tested using [Hardhat](https://hardhat.org) on a Mainnet fork. There are over 25 tests in this suite and even more economic simulation tests in a [dedicated repo](https://github.com/defi-org-code/single-playground). Run the test suite with:
 
 ```
 npm run build
