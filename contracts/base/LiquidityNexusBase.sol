@@ -31,6 +31,9 @@ contract LiquidityNexusBase is Ownable, Pausable, ReentrancyGuard {
         governance = _governance;
     }
 
+    /**
+     * Only the owner is supposed to deposit USDC into this contract.
+     */
     function depositCapital(uint256 amount) public onlyOwner {
         if (amount > 0) {
             IERC20(USDC).safeTransferFrom(msg.sender, address(this), amount);
@@ -41,6 +44,9 @@ contract LiquidityNexusBase is Ownable, Pausable, ReentrancyGuard {
         depositCapital(IERC20(USDC).balanceOf(msg.sender));
     }
 
+    /**
+     * The owner can withdraw the unused USDC capital that they had deposited earlier.
+     */
     function withdrawFreeCapital() public onlyOwner {
         uint256 balance = IERC20(USDC).balanceOf(address(this));
         if (balance > 0) {
@@ -48,6 +54,10 @@ contract LiquidityNexusBase is Ownable, Pausable, ReentrancyGuard {
         }
     }
 
+    /**
+     * Pause will only prevent new ETH deposits (addLiquidity). Existing depositors will still
+     * be able to removeLiquidity even when paused.
+     */
     function pause() external onlyOwner {
         _pause();
     }
@@ -56,6 +66,9 @@ contract LiquidityNexusBase is Ownable, Pausable, ReentrancyGuard {
         _unpause();
     }
 
+    /**
+     * Owner can only salvage unrelated tokens that were sent by mistake.
+     */
     function salvage(address[] memory tokens_) external onlyOwner {
         for (uint256 i = 0; i < tokens_.length; i++) {
             address token = tokens_[i];
