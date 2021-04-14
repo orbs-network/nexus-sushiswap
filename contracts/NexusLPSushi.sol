@@ -7,18 +7,18 @@ import "@openzeppelin/contracts/utils/Address.sol";
 import "./RebalancingStrategy1.sol";
 
 /**
- * This contract is part of Orbs Liquidity Nexus protocol. It is a thin wrapper over 
+ * This contract is part of Orbs Liquidity Nexus protocol. It is a thin wrapper over
  * Sushi LP token and represents liquidity added to the Sushi ETH/USDC pair.
- * 
- * The purpose of Liquidity Nexus is to allow single-sided ETH-only farming on SushiSwap. 
- * In regular Sushi LP, users add liquidity of both USDC and ETH in equal values. Nexus 
+ *
+ * The purpose of Liquidity Nexus is to allow single-sided ETH-only farming on SushiSwap.
+ * In regular Sushi LP, users add liquidity of both USDC and ETH in equal values. Nexus
  * LP allows users to add liquidity in ETH only, without needing any USDC.
- * 
- * So where does the USDC come from? USDC is sourced separately from Orbs Liquidity 
- * Nexus and originates from CeFi. This large pool of USDC is deployed in advance and is 
- * waiting in the contract until ETH is added. Once ETH is added by users, it is paired 
- * with part of the available USDC to generate regular Sushi LP. When liquidity is 
- * removed by a user, the Sushi LP is burned, the USDC is returned to the pool and the 
+ *
+ * So where does the USDC come from? USDC is sourced separately from Orbs Liquidity
+ * Nexus and originates from CeFi. This large pool of USDC is deployed in advance and is
+ * waiting in the contract until ETH is added. Once ETH is added by users, it is paired
+ * with part of the available USDC to generate regular Sushi LP. When liquidity is
+ * removed by a user, the Sushi LP is burned, the USDC is returned to the pool and the
  * ETH is returned to the user.
  */
 contract NexusLPSushi is ERC20("Nexus LP SushiSwap ETH/USDC", "NSLP"), RebalancingStrategy1 {
@@ -126,7 +126,7 @@ contract NexusLPSushi is ERC20("Nexus LP SushiSwap ETH/USDC", "NSLP"), Rebalanci
         IWETH(WETH).withdraw(exitETH);
         Address.sendValue(beneficiary, exitETH);
     }
-     
+
     /**
      * When a depositor removes liquidity, they get ETH back. This works with WETH (ERC20).
      * Argument shares is the number of Nexus LP tokens to burn.
@@ -179,7 +179,7 @@ contract NexusLPSushi is ERC20("Nexus LP SushiSwap ETH/USDC", "NSLP"), Rebalanci
      * SUSHI rewards that were claimed by governance (the vault working with this contract) and sold by
      * governance can be compounded back inside via this function. Receives all sold rewards as ETH.
      * Argument capitalProviderRewardPercentmil is the split of the profits that should be given to the
-     * provider of USDC. Use 50000 to have an even 50/50 split of the reward profits. Use 20000 to take 80% 
+     * provider of USDC. Use 50000 to have an even 50/50 split of the reward profits. Use 20000 to take 80%
      * to the ETH providers and leave 20% of reward profits to the USDC provider.
      */
     function compoundProfits(uint256 amountETH, uint256 capitalProviderRewardPercentmil)
@@ -287,13 +287,8 @@ contract NexusLPSushi is ERC20("Nexus LP SushiSwap ETH/USDC", "NSLP"), Rebalanci
     function emergencyExit(address[] memory _minters) external onlyOwner {
         if (!paused()) _pause();
 
-        for (uint256 i = 0; i < _minters.length; i++) {
-            address minter = _minters[i];
-            uint256 shares = balanceOf(minter);
-            if (shares > 0) {
-                _withdraw(minter, minter, shares, block.timestamp); // solhint-disable-line not-rely-on-time
-            }
-        }
+        // TODO
+
         withdrawFreeCapital();
     }
 }

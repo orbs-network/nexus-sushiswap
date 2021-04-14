@@ -1,8 +1,17 @@
 import { expect } from "chai";
 import { Tokens } from "../src/token";
-import { balanceETH, deadline, deployer, IWETHContract, nexus, sushiRouter } from "./test-base";
-import { bn, bn18, bn6, ether, many } from "../src/utils";
-import { advanceTime, web3 } from "../src/network";
+import {
+  balanceETH,
+  balanceUSDC,
+  deadline,
+  deployer,
+  IWETHContract,
+  nexus,
+  startNexusBalanceUSDC,
+  sushiRouter,
+} from "./test-base";
+import { bn, bn18, bn6, ether, fmt, many } from "../src/utils";
+import { advanceTime } from "../src/network";
 import { Wallet } from "../src/wallet";
 
 describe("LiquidityNexus Auto-Staking Tests", () => {
@@ -15,41 +24,34 @@ describe("LiquidityNexus Auto-Staking Tests", () => {
     expect(await Tokens.SUSHI().methods.balanceOf(deployer).call()).bignumber.zero;
     expect(await Tokens.WETH().methods.balanceOf(deployer).call()).bignumber.zero;
 
-    const nexusUSDCInitialBalance = bn(await Tokens.USDC().methods.balanceOf(nexus.options.address).call());
     const user = (await Wallet.fake(1)).address;
-    const userEthInitialBalance = await balanceETH(user);
-    const userEthInvestment = bn18("100");
+    const initialBalanceETH = await balanceETH(user);
+    const principalETH = bn18("100");
     const hardWorkTimeInterval = 60 * 60 * 24; // 1 day
 
-    await nexus.methods.addLiquidityETH(user, deadline).send({ value: userEthInvestment, from: user });
+    await nexus.methods.addLiquidityETH(user, deadline).send({ value: principalETH, from: user });
 
     await advanceTime(hardWorkTimeInterval);
-    await doHardWork();
+    await doHardWork(0); //0% rewards
 
     expect(await nexus.methods.removeAllLiquidityETH(user, deadline).call({ from: user })).bignumber.closeTo(
-      userEthInvestment,
+      principalETH,
       ether
     );
     await nexus.methods.removeAllLiquidityETH(user, deadline).send({ from: user });
 
-    const nexusUSDCFinalBalance = bn(await Tokens.USDC().methods.balanceOf(nexus.options.address).call());
-    const userEthFinalBalance = await balanceETH(user);
-    const userEthGain = userEthFinalBalance.sub(userEthInitialBalance);
+    const endBalanceETH = await balanceETH(user);
+    const userProfitETH = endBalanceETH.sub(initialBalanceETH);
 
-    expect(nexusUSDCFinalBalance).bignumber.closeTo(nexusUSDCInitialBalance, bn6("1"));
-    console.log(
-      "eth provider initial balance: ",
-      userEthInitialBalance.toString(),
-      " final balance: ",
-      userEthFinalBalance.toString(),
-      " eth gain: ",
-      userEthGain.toString()
-    );
-    const dailyAPR = userEthGain.div(userEthInvestment);
-    console.log(dailyAPR.toString());
-    // const APR = dailyAPR * 365;
-    // const APY = (dailyAPR + 1) ** 365;
-    // console.log(" resulted APR: ", APR.toString(), " APY: ", APY.toString());
+    expect(await balanceUSDC()).bignumber.closeTo(startNexusBalanceUSDC, bn6("1"));
+
+    console.log("principal", fmt(principalETH), "ETH profit", fmt(userProfitETH));
+
+    const dailyRate = userProfitETH.mul(ether).div(principalETH);
+    const APR = dailyRate.muln(365);
+    console.log("resulted APR: ", fmt(APR.muln(100)), "%");
+    // ((1 + apr/365) ^ 365) - 1
+    console.log("resulted APY: ", "TODO", "%");
   });
 
   it("compoundProfits 2 users", async () => {
@@ -76,18 +78,17 @@ describe("LiquidityNexus Auto-Staking Tests", () => {
   });
 });
 
-// This simulates Harvest Strategy doHardWork
-async function doHardWork() {
+async function doHardWork(capitalProviderRewardPercentmil: number) {
   await nexus.methods.claimRewards().send({ from: deployer });
 
   const sushiBalance = await Tokens.SUSHI().methods.balanceOf(deployer).call();
-  console.log("doHardWork sushi", web3().utils.fromWei(sushiBalance, "ether"), "SUSHI");
+  console.log("doHardWork sushi", fmt(sushiBalance), "SUSHI");
 
   await sushiRouter.methods
     .swapExactTokensForTokens(sushiBalance, 0, [Tokens.SUSHI().address, Tokens.WETH().address], deployer, deadline)
     .send({ from: deployer });
   const rewards = await Tokens.WETH().methods.balanceOf(deployer).call();
-  console.log("doHardWork rewards", web3().utils.fromWei(rewards, "ether"), "WETH");
+  console.log("doHardWork rewards", fmt(rewards), "WETH");
 
-  await nexus.methods.compoundProfits(rewards, 0).send({ from: deployer });
+  await nexus.methods.compoundProfits(rewards, capitalProviderRewardPercentmil).send({ from: deployer });
 }

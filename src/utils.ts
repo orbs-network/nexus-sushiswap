@@ -1,5 +1,6 @@
 import Web3 from "web3";
 import BN from "bn.js";
+import { web3 } from "./network";
 
 export const zero = bn("0");
 export const ether = bn18("1");
@@ -29,4 +30,8 @@ export function bn8(n: string): BN {
  */
 export function bn6(e: string): BN {
   return bn(Web3.utils.toWei(e.split(",").join(""), "lovelace"));
+}
+
+export function fmt(ether: BN | number | string) {
+  return web3().utils.fromWei(bn(ether), "ether");
 }
