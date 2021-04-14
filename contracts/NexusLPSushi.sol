@@ -100,8 +100,7 @@ contract NexusLPSushi is ERC20("Nexus LP SushiSwap ETH/USDC", "NSLP"), Rebalanci
 
     /**
      * When a depositor removes liquidity, they get ETH back. This works with ETH directly.
-     * Argument shares is the number of Nexus 
-     tokens to burn.
+     * Argument shares is the number of Nexus LP tokens to burn.
      * Note: only the original address that called addLiquidity can call removeLiquidity.
      */
     function removeLiquidityETH(
