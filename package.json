@@ -23,6 +23,7 @@
     "chai-bn": "^0.2.1",
     "hardhat": "^2.1.1",
     "hardhat-gas-reporter": "^1.0.4",
+    "hardhat-tracer": "^1.0.0-alpha.3",
     "hardhat-typechain": "^0.3.5",
     "lodash": "^4.17.0",
     "prettier": "^2.2.1",
@@ -40,7 +41,7 @@
     "typechain": "typechain --target=web3-v1 --outDir=typechain-abi 'abi/**/*.json' && npx hardhat typechain",
     "prebuild": "rm -rf typechain-hardhat && rm -rf typechain-abi && npm run prettier && npm run typechain",
     "build": "npx hardhat compile && npx solhint 'contracts/**/*.sol'",
-    "test": "npx hardhat test"
+    "test": "npx hardhat test --logs"
   },
   "config": {
     "file": "./.config.json"

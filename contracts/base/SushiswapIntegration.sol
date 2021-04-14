@@ -99,6 +99,7 @@ contract SushiswapIntegration is LiquidityNexusBase {
             address(this),
             deadline
         );
+        require(addedETH == amountETH, "leftover ETH");
 
         IMasterChef(MASTERCHEF).deposit(POOL_ID, liquidity);
     }

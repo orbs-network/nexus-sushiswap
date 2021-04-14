@@ -1,6 +1,7 @@
 import {
   balanceETH,
   balanceUSDC,
+  balanceWETH,
   deadline,
   deployer,
   expectRevert,
@@ -9,9 +10,10 @@ import {
   startNexusBalanceUSDC,
   sushiEthUsdPair,
   sushiRouter,
+  totalPairedUSDC,
 } from "./test-base";
 import { Tokens } from "../src/token";
-import { bn, bn18, ether, many, zero } from "../src/utils";
+import { bn, bn18, bn6, ether, many, zero } from "../src/utils";
 import { expect } from "chai";
 import { Wallet } from "../src/wallet";
 
@@ -63,18 +65,32 @@ describe("LiquidityNexus Security Tests", () => {
   });
 
   it("emergency exit only for supplied minters, withdraws free capital", async () => {
-    await nexus.methods.addLiquidityETH(deployer, deadline).send({ value: bn18("10") });
-    // TODO
+    const user1 = (await Wallet.fake(1)).address;
+    const user2 = (await Wallet.fake(2)).address;
+    await nexus.methods.addLiquidityETH(user1, deadline).send({ value: bn18("100") });
+    await nexus.methods.addLiquidityETH(user2, deadline).send({ value: bn18("100") });
+    const allPairedUSDC = await totalPairedUSDC();
+
+    await nexus.methods.emergencyExit([user1]).send();
+
+    expect(await totalPairedUSDC()).bignumber.closeTo(allPairedUSDC.divn(2), bn6("10"));
+    expect(await balanceUSDC()).bignumber.zero;
+    expect(await balanceETH()).bignumber.zero;
+
+    // expect(await totalPairedUSDC()).bignumber.zero;
+    // expect(await balanceUSDC()).bignumber.zero;
+    // expect(await balanceETH()).bignumber.zero;
+    // expect(await balanceWETH()).bignumber.closeTo(bn18("200"), bn18("0.1"));
   });
 
   it("owner can emergency liquidate", async () => {
-    expect(await balanceUSDC()).not.bignumber.zero;
+    expect(await balanceUSDC()).bignumber.eq(startNexusBalanceUSDC);
     expect(await balanceUSDC(deployer)).bignumber.zero;
 
     await nexus.methods.emergencyExit([]).send();
 
     expect(await nexus.methods.paused().call()).to.be.true;
     expect(await balanceUSDC()).bignumber.zero;
-    expect(await balanceUSDC(deployer)).not.bignumber.zero;
+    expect(await balanceUSDC(deployer)).bignumber.eq(startNexusBalanceUSDC);
   });
 });

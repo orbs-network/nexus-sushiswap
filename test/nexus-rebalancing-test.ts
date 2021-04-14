@@ -11,7 +11,7 @@ import {
   startDeployerBalanceETH,
   startNexusBalanceUSDC,
   startPrice,
-  totalInvestedUSDC,
+  totalPairedUSDC,
 } from "./test-base";
 import { bn, bn18, bn6, ether, zero } from "../src/utils";
 
@@ -21,11 +21,11 @@ describe("RebalancingStrategy1: rebalance usd/eth such that eth provider takes a
     const user2 = (await Wallet.fake(2)).address;
 
     await nexus.methods.addLiquidityETH(user1, deadline).send({ value: bn18("100"), from: user1 });
-    const investedForUser1 = await totalInvestedUSDC();
+    const investedForUser1 = await totalPairedUSDC();
     expect(investedForUser1).bignumber.closeTo(startPrice.muln(100), bn6("0.01"));
 
     await changeEthPrice(50);
-    expect(await totalInvestedUSDC()).bignumber.eq(investedForUser1);
+    expect(await totalPairedUSDC()).bignumber.eq(investedForUser1);
 
     for (let i = 0; i < 3; i++) {
       await nexus.methods.addLiquidityETH(user2, deadline).send({ value: bn18("100"), from: user2 });
@@ -36,7 +36,7 @@ describe("RebalancingStrategy1: rebalance usd/eth such that eth provider takes a
       await nexus.methods.removeAllLiquidityETH(user2, deadline).send({ from: user2 });
     }
 
-    expect(await totalInvestedUSDC()).bignumber.eq(investedForUser1);
+    expect(await totalPairedUSDC()).bignumber.eq(investedForUser1);
   });
 
   it("same user enter and exit multiple times, no leftovers", async () => {
@@ -73,7 +73,7 @@ describe("RebalancingStrategy1: rebalance usd/eth such that eth provider takes a
     expect(unpairedShares).bignumber.zero;
     expect(await nexus.methods.totalSupply().call()).bignumber.zero;
     expect(await nexus.methods.totalPairedShares().call()).bignumber.zero;
-    expect(await totalInvestedUSDC()).bignumber.zero;
+    expect(await totalPairedUSDC()).bignumber.zero;
   });
 
   it("whale -> price increase -> fish -> whale exit -> fish exit", async () => {
@@ -82,13 +82,13 @@ describe("RebalancingStrategy1: rebalance usd/eth such that eth provider takes a
 
     await nexus.methods.addLiquidityETH(whale, deadline).send({ value: bn18("100"), from: whale });
     const usdBackingForWhale = startPrice.muln(100);
-    expect(await totalInvestedUSDC()).bignumber.closeTo(usdBackingForWhale, bn6("0.01"));
+    expect(await totalPairedUSDC()).bignumber.closeTo(usdBackingForWhale, bn6("0.01"));
 
     const price25 = await changeEthPrice(25);
 
     await nexus.methods.addLiquidityETH(fishy, deadline).send({ value: bn18("1"), from: fishy });
     const usdBackingForFish = price25; // new price of 1 eth
-    expect(await totalInvestedUSDC()).bignumber.closeTo(usdBackingForWhale.add(usdBackingForFish), bn6("0.01"));
+    expect(await totalPairedUSDC()).bignumber.closeTo(usdBackingForWhale.add(usdBackingForFish), bn6("0.01"));
 
     // original eth after price shift without rebalancing is 89.44
     expect(await nexus.methods.removeAllLiquidityETH(whale, deadline).call({ from: whale })).bignumber.closeTo(
@@ -96,14 +96,14 @@ describe("RebalancingStrategy1: rebalance usd/eth such that eth provider takes a
       bn18("0.01")
     );
     await nexus.methods.removeAllLiquidityETH(whale, deadline).send({ from: whale });
-    expect(await totalInvestedUSDC()).bignumber.closeTo(usdBackingForFish, bn6("0.01"));
+    expect(await totalPairedUSDC()).bignumber.closeTo(usdBackingForFish, bn6("0.01"));
 
     expect(await nexus.methods.removeAllLiquidityETH(fishy, deadline).call({ from: fishy })).bignumber.closeTo(
       bn18("0.99"),
       bn18("0.01")
     );
     await nexus.methods.removeAllLiquidityETH(fishy, deadline).send({ from: fishy });
-    expect(await totalInvestedUSDC()).bignumber.zero;
+    expect(await totalPairedUSDC()).bignumber.zero;
     expect(await balanceUSDC()).bignumber.eq(startNexusBalanceUSDC);
   });
 
@@ -129,7 +129,7 @@ describe("RebalancingStrategy1: rebalance usd/eth such that eth provider takes a
     );
     await nexus.methods.removeAllLiquidityETH(u1, deadline).send({ from: u1 });
     await nexus.methods.removeAllLiquidityETH(u2, deadline).send({ from: u2 });
-    expect(await totalInvestedUSDC()).bignumber.zero;
+    expect(await totalPairedUSDC()).bignumber.zero;
     expect(await balanceETH(u1)).bignumber.closeTo(bn18("9,990"), ether);
     expect(await balanceETH(u2)).bignumber.closeTo(bn18("9,975"), ether);
   });

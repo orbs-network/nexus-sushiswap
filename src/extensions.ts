@@ -1,4 +1,4 @@
-import { artifact, web3 } from "./network";
+import { artifact, tag, web3 } from "./network";
 import { TransactionReceipt } from "web3-core";
 import { CallOptions, Contract as ContractOrig, ContractOptions, SendOptions } from "web3-eth-contract";
 import { BaseContract, BlockType } from "@typechain/web3-v1/static/types";
@@ -25,5 +25,6 @@ export async function deployContract<T extends Contract>(name: string, deployer:
     .deploy({ data: _artifact.bytecode, arguments: args })
     .send({ from: deployer });
   console.log(`deployed ${name} to ${deployed.options.address}`);
+  tag(deployed.options.address, name);
   return contract<T>(_artifact.abi, deployed.options.address, deployed.options);
 }

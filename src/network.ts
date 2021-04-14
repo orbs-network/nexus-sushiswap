@@ -20,13 +20,17 @@ export function artifact(name: string): Artifact {
   return hre().artifacts.readArtifactSync(name);
 }
 
+export function tag(address: string, name: string) {
+  hre().tracer.nameTags[address] = name;
+}
+
 export async function impersonate(address: string) {
   console.log("impersonating", address);
   await network().provider.send("hardhat_impersonateAccount", [address]);
 }
 
-export async function resetFakeNetworkFork(blockNumber: number = forkingBlockNumber()) {
-  console.log("resetFakeNetworkFork");
+export async function resetNetworkFork(blockNumber: number = forkingBlockNumber()) {
+  console.log("resetNetworkFork");
   await network().provider.send("hardhat_reset", [
     {
       forking: {

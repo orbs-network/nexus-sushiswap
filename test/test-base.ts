@@ -3,7 +3,7 @@ import { NexusLPSushi } from "../typechain-hardhat/NexusLPSushi";
 import { bn, bn6, ether, many } from "../src/utils";
 import { IUniswapV2Pair } from "../typechain-hardhat/IUniswapV2Pair";
 import { contract, deployContract } from "../src/extensions";
-import { impersonate, resetFakeNetworkFork, web3 } from "../src/network";
+import { impersonate, resetNetworkFork, tag, web3 } from "../src/network";
 import { Tokens } from "../src/token";
 import { IUniswapV2Router02 } from "../typechain-hardhat/IUniswapV2Router02";
 import { Wallet } from "../src/wallet";
@@ -35,22 +35,32 @@ beforeEach(async () => {
   }
 });
 
-async function doBeforeEach() {
-  await resetFakeNetworkFork();
-  await impersonate(usdcWhale);
+async function initWallet() {
   const wallet = await Wallet.fake();
   wallet.setAsDefaultSigner();
   deployer = wallet.address;
+  tag(deployer, "deployer");
+}
+
+async function doBeforeEach() {
+  await resetNetworkFork();
+  await impersonate(usdcWhale);
+  tag(usdcWhale, "USDC whale (binance7)");
+
+  await initWallet();
+
   nexus = await deployContract<NexusLPSushi>("NexusLPSushi", deployer);
 
   sushiRouter = contract<IUniswapV2Router02>(
     require("../artifacts/contracts/interface/ISushiswapRouter.sol/IUniswapV2Router02.json").abi,
     "0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F"
   );
+  tag(sushiRouter.options.address, "sushiRouter");
   sushiEthUsdPair = contract<IUniswapV2Pair>(
     require("../artifacts/contracts/interface/ISushiswapRouter.sol/IUniswapV2Pair.json").abi,
     "0x397FF1542f962076d0BFE58eA045FfA2d347ACa0"
   );
+  tag(sushiEthUsdPair.options.address, "sushiETH/USDCPair");
   IWETHContract = contract<IWETH>(
     require("../artifacts/contracts/interface/ISushiswapRouter.sol/IWETH.json").abi,
     Tokens.WETH().address
@@ -89,7 +99,7 @@ export async function balanceWETH(address: string = nexus.options.address) {
   return bn(await Tokens.WETH().methods.balanceOf(address).call());
 }
 
-export async function totalInvestedUSDC() {
+export async function totalPairedUSDC() {
   return bn(await nexus.methods.totalPairedUSDC().call());
 }
 

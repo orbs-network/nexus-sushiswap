@@ -4,18 +4,18 @@ import { bn } from "./utils";
 export class Wallet {
   static async fake(index: number = 0) {
     const accounts: string[] = await web3().eth.getAccounts();
-    return this.fromAddress(accounts[index]);
+    return this.fromAddress(accounts[index], `fake${index}`);
   }
 
   static random() {
-    return this.fromAddress(web3().eth.accounts.create().address);
+    return this.fromAddress(web3().eth.accounts.create().address, "random");
   }
 
-  static fromAddress(address: string) {
-    return new Wallet(address);
+  static fromAddress(address: string, name: string) {
+    return new Wallet(address, name);
   }
 
-  private constructor(public address: string) {
+  private constructor(public address: string, public name: string) {
     console.log("wallet address:", this.address);
   }
 
@@ -25,5 +25,6 @@ export class Wallet {
 
   setAsDefaultSigner() {
     web3().eth.defaultAccount = this.address;
+    console.log("default signer:", this.address);
   }
 }

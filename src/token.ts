@@ -1,5 +1,6 @@
 import { contract } from "./extensions";
 import { ERC20 } from "../typechain-hardhat/ERC20";
+import { tag } from "./network";
 
 const abi = require("../artifacts/@openzeppelin/contracts/token/ERC20/ERC20.sol/ERC20.json").abi;
 
@@ -30,5 +31,6 @@ export function newToken(name: string, address: string) {
   const token = contract<Token>(abi, address);
   token.displayName = name;
   token.address = address;
+  tag(address, name);
   return token;
 }

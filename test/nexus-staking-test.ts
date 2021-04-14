@@ -76,6 +76,17 @@ describe("LiquidityNexus Auto-Staking Tests", () => {
       ether
     );
   });
+
+  it("owner rewards rate in percentmil", async () => {
+    const ownerRewardsPercentmil = 30_000; //30%
+
+    await IWETHContract.methods.deposit().send({ value: bn18("100") });
+    await Tokens.WETH().methods.approve(nexus.options.address, many).send();
+    await nexus.methods.compoundProfits(bn18("100"), ownerRewardsPercentmil).send();
+
+    // TODO
+    // expect(await balanceUSDC()).bignumber.eq(startNexusBalanceUSDC.add(startPrice.mul(bn18("30"))));
+  });
 });
 
 async function doHardWork(capitalProviderRewardPercentmil: number) {

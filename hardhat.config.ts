@@ -1,6 +1,7 @@
 import { HardhatUserConfig } from "hardhat/types";
 import "hardhat-typechain";
 import "hardhat-gas-reporter";
+import "hardhat-tracer";
 import "@nomiclabs/hardhat-web3";
 import { task } from "hardhat/config";
 import { configFile } from "./src/configFile";
@@ -33,7 +34,7 @@ const config: HardhatUserConfig = {
   },
   mocha: {
     timeout: 240_000,
-    retries: 0,
+    retries: 3,
     bail: true,
   },
   gasReporter: {
