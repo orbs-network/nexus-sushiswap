@@ -14,11 +14,13 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   console.log("deployer balance", await web3().eth.getBalance(deployer));
   console.log("deploying NexusLPSushi on network", await hre.getChainId());
 
-  await deploy("NexusLPSushi", {
+  const res = await deploy("NexusLPSushi", {
     from: account.privateKey,
     args: [],
     log: true,
     gasLimit: 5_000_000,
   });
+
+  await hre.run("verify", [res.address]);
 };
 export default func;
