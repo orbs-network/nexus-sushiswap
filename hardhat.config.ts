@@ -2,7 +2,9 @@ import { HardhatUserConfig } from "hardhat/types";
 import "hardhat-typechain";
 import "hardhat-gas-reporter";
 import "hardhat-tracer";
+import "hardhat-deploy";
 import "@nomiclabs/hardhat-web3";
+import "@nomiclabs/hardhat-etherscan";
 import { task } from "hardhat/config";
 import { configFile } from "./src/configFile";
 
@@ -27,6 +29,10 @@ const config: HardhatUserConfig = {
       },
       blockGasLimit: 12e6,
     },
+    eth: {
+      chainId: 1,
+      url: "https://eth-mainnet.alchemyapi.io/v2/" + configFile().alchemyKey,
+    },
   },
   typechain: {
     outDir: "typechain-hardhat",
@@ -41,6 +47,9 @@ const config: HardhatUserConfig = {
     currency: "USD",
     coinmarketcap: configFile().coinmarketcapKey,
     showTimeSpent: true,
+  },
+  etherscan: {
+    apiKey: configFile().etherscanKey,
   },
 };
 export default config;

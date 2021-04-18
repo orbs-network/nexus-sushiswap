@@ -10,6 +10,7 @@ export function configFile() {
         {
           alchemyKey: "APIKEY",
           coinmarketcapKey: "APIKEY",
+          etherscanKey: "APIKEY",
         },
         null,
         4
