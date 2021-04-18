@@ -2,6 +2,9 @@
 pragma solidity ^0.7.6;
 import "./base/SushiswapIntegration.sol";
 
+/**
+ * THIS REBALANCING IS NOT FULLY TESTED, NOT PRODUCTION READY, CURRENTLY UNUSED
+ */
 contract RebalancingStrategy3 is SushiswapIntegration {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
@@ -15,7 +18,7 @@ contract RebalancingStrategy3 is SushiswapIntegration {
         uint256 entryUSDC,
         uint256 entryETH
     ) internal returns (uint256 exitUSDC, uint256 exitETH) {
-        uint256 price = quote(1e18); // TODO this is weird
+        uint256 price = quote(1e18); // this is weird
         uint256 removedETHPrice = removedETH.mul(price);
         uint256 entryETHPrice = entryETH.mul(price);
         uint256 num = entryETH.mul(removedUSDC.add(removedETHPrice));

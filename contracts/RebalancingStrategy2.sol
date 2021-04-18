@@ -3,6 +3,9 @@ pragma solidity ^0.7.6;
 
 import "./base/SushiswapIntegration.sol";
 
+/**
+ * THIS REBALANCING IS NOT FULLY TESTED, NOT PRODUCTION READY, CURRENTLY UNUSED
+ */
 contract RebalancingStrategy2 is SushiswapIntegration {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
@@ -22,7 +25,7 @@ contract RebalancingStrategy2 is SushiswapIntegration {
             exitETH = removedETH.add(_poolSwapExactUSDCForETH(deltaUSDC));
             exitUSDC = entryUSDC;
         } else {
-            uint256 deltaETH = removedETH.sub(entryETH); // TODO underflow?
+            uint256 deltaETH = removedETH.sub(entryETH); // underflow?
             exitUSDC = removedUSDC.add(_poolSwapExactETHForUSDC(deltaETH));
             exitETH = entryETH;
         }
