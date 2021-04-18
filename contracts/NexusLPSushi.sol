@@ -5,7 +5,6 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "./RebalancingStrategy1.sol";
-import "hardhat/console.sol";
 
 /**
  * This contract is part of Orbs Liquidity Nexus protocol. It is a thin wrapper over
