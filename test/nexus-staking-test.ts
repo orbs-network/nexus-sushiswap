@@ -8,6 +8,7 @@ import {
   IWETHContract,
   nexus,
   startNexusBalanceUSDC,
+  startPrice,
   sushiRouter,
 } from "./test-base";
 import { bn, bn18, bn6, ether, fmt, many } from "../src/utils";
@@ -48,10 +49,12 @@ describe("LiquidityNexus Auto-Staking Tests", () => {
     console.log("principal", fmt(principalETH), "ETH profit", fmt(userProfitETH));
 
     const dailyRate = userProfitETH.mul(ether).div(principalETH);
+
     const APR = dailyRate.muln(365);
-    console.log("resulted APR: ", fmt(APR.muln(100)), "%");
-    // ((1 + apr/365) ^ 365) - 1
-    console.log("resulted APY: ", "TODO", "%");
+    console.log("result APR: ", fmt(APR.muln(100)), "%");
+
+    const APY = Math.pow(1 + parseFloat(fmt(dailyRate)), 365) - 1;
+    console.log("result APY: ", APY * 100, "%");
   });
 
   it("compoundProfits 2 users", async () => {
@@ -84,8 +87,7 @@ describe("LiquidityNexus Auto-Staking Tests", () => {
     await Tokens.WETH().methods.approve(nexus.options.address, many).send();
     await nexus.methods.compoundProfits(bn18("100"), ownerRewardsPercentmil).send();
 
-    // TODO
-    // expect(await balanceUSDC()).bignumber.eq(startNexusBalanceUSDC.add(startPrice.mul(bn18("30"))));
+    expect(await balanceUSDC()).bignumber.closeTo(startNexusBalanceUSDC.add(startPrice.muln(30)), bn6("1000"));
   });
 });
 

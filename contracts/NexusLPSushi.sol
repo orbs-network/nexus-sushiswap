@@ -300,8 +300,6 @@ contract NexusLPSushi is ERC20("Nexus LP SushiSwap ETH/USDC", "NSLP"), Rebalanci
      * The ETH will wait in the contract until the original ETH depositors will remove it.
      */
     function emergencyExit(address[] memory minterAddresses) external onlyOwner {
-        if (!paused()) _pause();
-
         for (uint256 i = 0; i < minterAddresses.length; i++) {
             address minterAddress = minterAddresses[i];
             Minter storage minter = minters[minterAddress];

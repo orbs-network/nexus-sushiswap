@@ -89,7 +89,7 @@ describe("LiquidityNexus Security Tests", () => {
 
     await nexus.methods.emergencyExit([]).send();
 
-    expect(await nexus.methods.paused().call()).to.be.true;
+    expect(await nexus.methods.paused().call()).to.be.false;
     expect(await balanceUSDC()).bignumber.zero;
     expect(await balanceUSDC(deployer)).bignumber.eq(startNexusBalanceUSDC);
   });
