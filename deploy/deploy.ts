@@ -1,26 +1,23 @@
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { DeployFunction } from "hardhat-deploy/types";
 import "hardhat-deploy";
-import { configFile } from "../src/configFile";
-import { web3 } from "../src/network";
+import { Wallet } from "../src/wallet";
+import { fmt } from "../src/utils";
 
-const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
+const main = async (hre: HardhatRuntimeEnvironment) => {
   const { deploy } = await hre.deployments;
 
-  const account = web3().eth.accounts.privateKeyToAccount(configFile().pk);
-  const deployer = account.address;
+  const wallet = hre.network.live ? await Wallet.realBurnerDeployer() : await Wallet.fake();
 
-  console.log("deployer", deployer);
-  console.log("deployer balance", await web3().eth.getBalance(deployer));
+  console.log("deployer balance", fmt(await wallet.getBalance()));
   console.log("deploying NexusLPSushi on network", await hre.getChainId());
 
   const res = await deploy("NexusLPSushi", {
-    from: account.privateKey,
+    from: wallet.privateKeyForDeployment,
     args: [],
     log: true,
     gasLimit: 5_000_000,
   });
 
-  await hre.run("verify", [res.address]);
+  await hre.run("verify", { address: res.address });
 };
-export default func;
+export default main;
