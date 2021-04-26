@@ -26,7 +26,7 @@ abstract contract AaveFlashLoanReceiver is IFlashLoanReceiver {
     /**
      * callbackName - the function to execute with the loan, for example "foo()"
      */
-    function takeFlashLoan(
+    function aaveFlashLoan(
         address asset,
         uint256 amount,
         string memory callbackName

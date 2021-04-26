@@ -30,7 +30,7 @@ const config: HardhatUserConfig = {
       },
       blockGasLimit: 12e6,
       accounts: {
-        accountsBalance: bn18("1,000,000").toString(),
+        accountsBalance: bn18("100,000,000").toString(),
       },
     },
     eth: {

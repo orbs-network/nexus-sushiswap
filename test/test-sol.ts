@@ -49,7 +49,7 @@ solidityTestSuite({
   contractName: "TestSanity",
   deployer: deployer,
   constructorArgs: () => [nexus.options.address],
-  initialBalance: bn18("100"),
+  initialBalance: bn18("10,000,000"),
   beforeEachFn: async (testContract: string) => {
     await nexus.methods.setGovernance(testContract).send({ from: deployer });
   },
@@ -59,7 +59,7 @@ solidityTestSuite({
   contractName: "TestSecurity",
   deployer: deployer,
   constructorArgs: () => [nexus.options.address],
-  initialBalance: bn18("100"),
+  initialBalance: bn18("10,000,000"),
   beforeEachFn: async (testContract: string) => {
     await nexus.methods.setGovernance(testContract).send({ from: deployer });
   },

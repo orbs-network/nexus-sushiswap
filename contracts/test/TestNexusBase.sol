@@ -16,8 +16,8 @@ abstract contract TestNexusBase is TestBase {
 
     uint256 public constant DEADLINE = 4102444800; // 2100-01-01
     mapping(address => address[]) public pathTo;
-    address public USDC; //solhint-disable-line var-name-mixedcase
     address public WETH; //solhint-disable-line var-name-mixedcase
+    address public USDC; //solhint-disable-line var-name-mixedcase
 
     constructor(NexusLPSushi uut) payable TestBase() {
         nexus = uut;
