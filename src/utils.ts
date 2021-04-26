@@ -32,6 +32,10 @@ export function bn6(e: string): BN {
   return bn(Web3.utils.toWei(e.split(",").join(""), "lovelace"));
 }
 
-export function fmt(ether: BN | number | string) {
+export function fmt18(ether: BN | number | string) {
   return web3().utils.fromWei(bn(ether), "ether");
+}
+
+export function fmt6(ether: BN | number | string) {
+  return web3().utils.fromWei(bn(ether), "lovelace");
 }

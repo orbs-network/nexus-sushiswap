@@ -11,7 +11,7 @@ import {
   startPrice,
   sushiRouter,
 } from "./test-base";
-import { bn, bn18, bn6, ether, fmt, many } from "../src/utils";
+import { bn, bn18, bn6, ether, fmt18, many } from "../src/utils";
 import { advanceTime } from "../src/network";
 import { Wallet } from "../src/wallet";
 
@@ -46,14 +46,14 @@ describe("LiquidityNexus Auto-Staking Tests", () => {
 
     expect(await balanceUSDC()).bignumber.closeTo(startNexusBalanceUSDC, bn6("1"));
 
-    console.log("principal", fmt(principalETH), "ETH profit", fmt(userProfitETH));
+    console.log("principal", fmt18(principalETH), "ETH profit", fmt18(userProfitETH));
 
     const dailyRate = userProfitETH.mul(ether).div(principalETH);
 
     const APR = dailyRate.muln(365);
-    console.log("result APR: ", fmt(APR.muln(100)), "%");
+    console.log("result APR: ", fmt18(APR.muln(100)), "%");
 
-    const APY = Math.pow(1 + parseFloat(fmt(dailyRate)), 365) - 1;
+    const APY = Math.pow(1 + parseFloat(fmt18(dailyRate)), 365) - 1;
     console.log("result APY: ", APY * 100, "%");
   });
 
@@ -95,13 +95,13 @@ async function doHardWork(capitalProviderRewardPercentmil: number) {
   await nexus.methods.claimRewards().send({ from: deployer });
 
   const sushiBalance = await Tokens.SUSHI().methods.balanceOf(deployer).call();
-  console.log("doHardWork sushi", fmt(sushiBalance), "SUSHI");
+  console.log("doHardWork sushi", fmt18(sushiBalance), "SUSHI");
 
   await sushiRouter.methods
     .swapExactTokensForTokens(sushiBalance, 0, [Tokens.SUSHI().address, Tokens.WETH().address], deployer, deadline)
     .send({ from: deployer });
   const rewards = await Tokens.WETH().methods.balanceOf(deployer).call();
-  console.log("doHardWork rewards", fmt(rewards), "WETH");
+  console.log("doHardWork rewards", fmt18(rewards), "WETH");
 
   await nexus.methods.compoundProfits(rewards, capitalProviderRewardPercentmil).send({ from: deployer });
 }

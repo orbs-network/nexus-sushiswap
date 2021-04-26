@@ -7,6 +7,7 @@ import "@nomiclabs/hardhat-web3";
 import "@nomiclabs/hardhat-etherscan";
 import { task } from "hardhat/config";
 import { configFile } from "./src/configFile";
+import { bn18 } from "./src/utils";
 
 task("start", "").setAction(async () => {});
 
@@ -28,6 +29,9 @@ const config: HardhatUserConfig = {
         url: "https://eth-mainnet.alchemyapi.io/v2/" + configFile().alchemyKey,
       },
       blockGasLimit: 12e6,
+      accounts: {
+        accountsBalance: bn18("1,000,000").toString(),
+      },
     },
     eth: {
       chainId: 1,

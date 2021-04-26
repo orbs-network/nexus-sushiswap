@@ -149,7 +149,7 @@ describe("LiquidityNexus Sanity Tests", () => {
     await nexus.methods.removeAllLiquidityETH(user1, deadline).send({ from: user1 });
     await nexus.methods.removeAllLiquidityETH(user2, deadline).send({ from: user2 });
     expect(await balanceUSDC()).bignumber.eq(startNexusBalanceUSDC);
-    expect(await balanceETH(user1)).bignumber.closeTo(bn18("10,000"), bn18("0.1"));
-    expect(await balanceETH(user2)).bignumber.closeTo(bn18("10,000"), bn18("0.1"));
+    expect(await balanceETH(user1)).bignumber.closeTo(bn18("1,000,000"), bn18("0.1"));
+    expect(await balanceETH(user2)).bignumber.closeTo(bn18("1,000,000"), bn18("0.1"));
   });
 });

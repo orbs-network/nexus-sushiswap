@@ -130,8 +130,8 @@ describe("RebalancingStrategy1: rebalance usd/eth such that eth provider takes a
     await nexus.methods.removeAllLiquidityETH(u1, deadline).send({ from: u1 });
     await nexus.methods.removeAllLiquidityETH(u2, deadline).send({ from: u2 });
     expect(await totalPairedUSDC()).bignumber.zero;
-    expect(await balanceETH(u1)).bignumber.closeTo(bn18("9,990"), ether);
-    expect(await balanceETH(u2)).bignumber.closeTo(bn18("9,975"), ether);
+    expect(await balanceETH(u1)).bignumber.closeTo(bn18("999,990"), ether);
+    expect(await balanceETH(u2)).bignumber.closeTo(bn18("999,975"), ether);
   });
 
   it("interest bearing lp tokens", async () => {

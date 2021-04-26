@@ -1,6 +1,6 @@
 import BN from "bn.js";
 import { NexusLPSushi } from "../typechain-hardhat/NexusLPSushi";
-import { bn, bn6, ether, many } from "../src/utils";
+import { bn, bn6, ether, fmt18, fmt6, many } from "../src/utils";
 import { IUniswapV2Pair } from "../typechain-hardhat/IUniswapV2Pair";
 import { contract, deployContract } from "../src/extensions";
 import { impersonate, resetNetworkFork, tag, web3 } from "../src/network";
@@ -10,7 +10,8 @@ import { Wallet } from "../src/wallet";
 import { IWETH } from "../typechain-hardhat/IWETH";
 import { expect } from "chai";
 
-const usdcWhale = "0xBE0eB53F46cd790Cd13851d5EFf43D12404d33E8"; // binance7
+export const usdcWhale = "0xF977814e90dA44bFA03b6295A0616a897441aceC"; // binance8
+export const usdcWhale2 = "0xBE0eB53F46cd790Cd13851d5EFf43D12404d33E8"; // binance7
 
 export const deadline = many;
 export let deployer: string;
@@ -45,7 +46,9 @@ async function initWallet() {
 async function doBeforeEach() {
   await resetNetworkFork();
   await impersonate(usdcWhale);
-  tag(usdcWhale, "USDC whale (binance7)");
+  await impersonate(usdcWhale2);
+  tag(usdcWhale, "USDC whale (binance8)");
+  tag(usdcWhale2, "USDC whale (binance7)");
 
   await initWallet();
 
@@ -110,9 +113,11 @@ export async function totalPairedUSDC() {
  * @returns the new eth price in usd
  */
 export async function changeEthPrice(percent: number) {
-  console.log("changing ETH price by", percent, "percent");
+  console.log("changing ETH price by", percent, "%");
 
   const price = await quote();
+  console.log("start price", fmt6(price));
+
   const targetPrice = price.muln((1 + percent / 100) * 1000).divn(1000);
   const usdDelta = await computeUsdDeltaForTargetPrice(targetPrice);
 
@@ -132,7 +137,9 @@ export async function changeEthPrice(percent: number) {
       .send({ from: usdcWhale, value: (await balanceETH(usdcWhale)).sub(ether) });
   }
 
-  return await quote();
+  const result = await quote();
+  console.log("end price", fmt6(result));
+  return result;
 }
 
 /**
@@ -156,7 +163,7 @@ async function supplyCapitalAsDeployer(amount: BN) {
  */
 async function ensureUsdBalance(address: string, amount: BN) {
   if ((await balanceUSDC(address)).lt(amount)) {
-    await Tokens.USDC().methods.transfer(address, amount).send({ from: usdcWhale });
+    await Tokens.USDC().methods.transfer(address, amount).send({ from: usdcWhale2 });
   }
 }
 
