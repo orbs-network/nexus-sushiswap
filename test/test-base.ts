@@ -31,7 +31,7 @@ beforeEach(async () => {
     try {
       return await doBeforeEach();
     } catch (e) {
-      console.log("failed, trying again", e);
+      console.error(e, "\ntrying again...");
     }
   }
 });
