@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.7.6;
+pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
-import "./IFlashLoan.sol";
+import "@openzeppelin/contracts/utils/Strings.sol";
+import "./IAaveFlashLoan.sol";
 
 /**
  *   !!!
@@ -13,8 +15,9 @@ import "./IFlashLoan.sol";
  *   exposed to a 'griefing' attack, where the stored funds are used by an attacker.
  *   !!!
  */
-abstract contract FlashLoanReceiver is IFlashLoanReceiver {
+abstract contract AaveFlashLoanReceiver is IFlashLoanReceiver {
     using SafeMath for uint256;
+    using Strings for uint256;
     using SafeERC20 for IERC20;
 
     ILendingPoolAddressesProvider private provider =
@@ -44,8 +47,16 @@ abstract contract FlashLoanReceiver is IFlashLoanReceiver {
         bytes memory params = bytes(callbackName);
         uint16 referralCode = 0;
 
-        // TODO require(reserves >= amounts)
+        require(reserveForAsset(asset) >= amount, reserveForAsset(asset).toString());
         LENDING_POOL().flashLoan(receiverAddress, assets, amounts, modes, onBehalfOf, params, referralCode);
+    }
+
+    function reserveForAsset(address asset) public view returns (uint256) {
+        return IERC20(asset).balanceOf(LENDING_POOL().getReserveData(asset).aTokenAddress);
+    }
+
+    function interestForAmount(uint256 borrowedAmount) public view returns (uint256) {
+        return (borrowedAmount * LENDING_POOL().FLASHLOAN_PREMIUM_TOTAL()) / 10_000;
     }
 
     /**
