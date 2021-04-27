@@ -15,7 +15,7 @@ import "./IAaveFlashLoan.sol";
  *   exposed to a 'griefing' attack, where the stored funds are used by an attacker.
  *   !!!
  */
-abstract contract AaveFlashLoanReceiver is IFlashLoanReceiver {
+abstract contract AaveFlashLoan is IFlashLoanReceiver {
     using SafeMath for uint256;
     using Strings for uint256;
     using SafeERC20 for IERC20;
@@ -29,10 +29,8 @@ abstract contract AaveFlashLoanReceiver is IFlashLoanReceiver {
     function aaveFlashLoan(
         address asset,
         uint256 amount,
-        string memory callbackName
+        string memory fn
     ) public {
-        address receiverAddress = address(this);
-
         address[] memory assets = new address[](1);
         assets[0] = asset;
 
@@ -43,12 +41,8 @@ abstract contract AaveFlashLoanReceiver is IFlashLoanReceiver {
         uint256[] memory modes = new uint256[](1);
         modes[0] = 0;
 
-        address onBehalfOf = address(this);
-        bytes memory params = bytes(callbackName);
-        uint16 referralCode = 0;
-
         require(reserveForAsset(asset) >= amount, reserveForAsset(asset).toString());
-        LENDING_POOL().flashLoan(receiverAddress, assets, amounts, modes, onBehalfOf, params, referralCode);
+        LENDING_POOL().flashLoan(address(this), assets, amounts, modes, address(this), bytes(fn), 0);
     }
 
     function reserveForAsset(address asset) public view returns (uint256) {
@@ -81,7 +75,7 @@ abstract contract AaveFlashLoanReceiver is IFlashLoanReceiver {
          * Approve the LendingPool contract allowance to *pull* the owed amount
          */
 
-        Address.functionCall(address(this), abi.encodeWithSignature(string(params)), "flashloan callback failed");
+        Address.functionCall(address(this), abi.encodeWithSignature(string(params)), "aave flashloan callback failed");
 
         for (uint256 i = 0; i < assets.length; i++) {
             uint256 amountOwing = amounts[i].add(premiums[i]);

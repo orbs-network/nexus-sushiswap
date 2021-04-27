@@ -5,14 +5,14 @@ pragma solidity ^0.7.6;
 
 import "./TestNexusBase.sol";
 import "../interface/ISushiswapRouter.sol";
-import "./flashloan/AaveFlashLoanReceiver.sol";
-import "./flashloan/IUniswapFlashLoan.sol";
+import "./flashloan/AaveFlashLoan.sol";
+import "./flashloan/SushiswapFlashLoan.sol";
 
-contract TestSecurity is TestNexusBase, AaveFlashLoanReceiver, IUniswapV2FlashloanReceiver {
+contract TestSecurity is TestNexusBase, AaveFlashLoan, SushiswapFlashLoan {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
-    constructor(NexusLPSushi uut) payable TestNexusBase(uut) {
+    constructor(NexusLPSushi uut) payable TestNexusBase(uut) SushiswapFlashLoan(uut.SLP(), uut.WETH()) {
         IERC20(WETH).safeApprove(nexus.ROUTER(), uint256(~0));
         IERC20(USDC).safeApprove(nexus.ROUTER(), uint256(~0));
         IERC20(WETH).safeApprove(nexus.SLP(), uint256(~0));
@@ -21,50 +21,18 @@ contract TestSecurity is TestNexusBase, AaveFlashLoanReceiver, IUniswapV2Flashlo
     }
 
     function testFlashloanExploitOnEntry() external {
-        //        aaveFlashLoan(USDC, 40_000_000 * 1e6, "_executeFlashloanExploitOnEntry()");
-
-        IUniswapV2Pair pair = IUniswapV2Pair(nexus.SLP());
-        (uint112 rUSDC, uint112 rETH, ) = pair.getReserves();
-        uint256 repayETH = IUniswapV2Router02(nexus.ROUTER()).getAmountIn(190_000_000 * 1e6, rETH, rUSDC);
-        pair.swap(190_000_000 * 1e6, 0, address(this), abi.encode(repayETH));
+        sushiswapFlashLoan(0, 99_000, "_executeFlashloanExploitOnEntry(uint256,uint256)");
     }
 
-    function uniswapV2Call(
-        address sender,
-        uint256 amount0,
-        uint256 amount1,
-        bytes calldata data
-    ) external override {
-        printBalances("after uniswap loan", address(this));
-        uint256 repayETH = abi.decode(data, (uint256));
+    function _executeFlashloanExploitOnEntry(uint256 borrowedToken, uint256 borrowedETH) external {
+        printBalances("during loan", address(this));
+        console.log("space", nexus.availableSpaceToDepositETH() / 1 ether);
+        console.log("price", nexus.quote(1 ether) / 1e6);
 
+        //        nexus.addLiquidity(address(this), nexus.availableSpaceToDepositETH(), DEADLINE);
+        //        printBalances("after add liquidity", address(this));
 
-        IERC20(WETH).transfer(nexus.SLP(), repayETH);
-    }
-
-    function _executeFlashloanExploitOnEntry() public {
-        _dumpAllUSDC();
-
-        nexus.addLiquidity(address(this), nexus.availableSpaceToDepositETH(), DEADLINE);
-        printBalances("after add liquidity", address(this));
-
-        uint256 loanUSDC = 40_000_000 * 1e6;
-        uint256 repayUSDC = loanUSDC + interestForAmount(loanUSDC);
-
-        console.log("repayUSDC", repayUSDC / 1e6);
-        IUniswapV2Pair pair =
-            IUniswapV2Pair(IUniswapV2Factory(IUniswapV2Router02(nexus.ROUTER()).factory()).getPair(WETH, USDC));
-        (uint112 reserve0, uint112 reserve1, ) = pair.getReserves();
-        console.log("inETH", IUniswapV2Router02(nexus.ROUTER()).getAmountIn(repayUSDC, reserve1, reserve0) / 1 ether);
-
-        IUniswapV2Router02(nexus.ROUTER()).swapTokensForExactTokens(
-            repayUSDC,
-            uint256(~0),
-            pathTo[USDC],
-            address(this),
-            DEADLINE
-        );
-        printBalances("done", address(this));
+        IERC20(WETH).transfer(nexus.SLP(), getSushiswapFlashloanSameTokenReturn(borrowedETH));
     }
 
     function _buyRemainingOwing() private {
