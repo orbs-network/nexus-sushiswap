@@ -219,7 +219,7 @@ contract NexusLPSushi is ERC20("Nexus LP SushiSwap ETH/USDC", "NSLP"), Rebalanci
         Minter storage minter,
         uint256 amountETH,
         uint256 deadline
-    ) private returns (uint256 shares) {
+    ) private priceGuard(quote(1 ether)) returns (uint256 shares) {
         (uint256 pairedUSDC, uint256 pairedETH, uint256 liquidity) = _poolAddLiquidityAndStake(amountETH, deadline);
 
         if (totalPairedShares == 0) {
@@ -270,7 +270,7 @@ contract NexusLPSushi is ERC20("Nexus LP SushiSwap ETH/USDC", "NSLP"), Rebalanci
         Minter storage minter,
         uint256 shares,
         uint256 deadline
-    ) private {
+    ) private priceGuard(quote(1 ether)) {
         uint256 liquidity = shares.mul(totalLiquidity).div(totalPairedShares);
         (uint256 removedETH, uint256 removedUSDC) = _poolUnstakeAndRemoveLiquidity(liquidity, deadline);
 

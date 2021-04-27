@@ -23,8 +23,8 @@ contract TestSecurity is TestNexusBase, AaveFlashLoan, SushiswapFlashLoan {
 
     function testWhaleLoanExploitOnEntry() external {
         uint256 startBalanceUSDC = IERC20(USDC).balanceOf(address(this));
-        require(startBalanceUSDC >= 100_000_000 * 1e6, "assume 100M USDC");
         uint256 startBalanceETH = IERC20(WETH).balanceOf(address(this));
+        require(startBalanceUSDC >= 100_000_000 * 1e6, "assume 100M USDC");
 
         IUniswapV2Router02(nexus.ROUTER()).swapExactTokensForTokens(
             IERC20(USDC).balanceOf(address(this)),
@@ -34,7 +34,7 @@ contract TestSecurity is TestNexusBase, AaveFlashLoan, SushiswapFlashLoan {
             DEADLINE
         );
 
-        console.log("space", nexus.availableSpaceToDepositETH() / 1 ether);
+
         nexus.addLiquidity(address(this), nexus.availableSpaceToDepositETH(), DEADLINE);
 
         uint256 returnETH = IERC20(WETH).balanceOf(address(this)) - startBalanceETH;
@@ -49,5 +49,9 @@ contract TestSecurity is TestNexusBase, AaveFlashLoan, SushiswapFlashLoan {
         require(IERC20(WETH).balanceOf(address(this)) == startBalanceETH, "back to start balanceETH");
         uint256 profit = IERC20(USDC).balanceOf(address(this)) - startBalanceUSDC;
         require(profit > 0, profit.toString());
+    }
+
+    function _testWhaleLoanExploitOnEntry_shouldRevert() private {
+
     }
 }

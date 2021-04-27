@@ -8,8 +8,9 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "./PriceGuard.sol";
 
-contract LiquidityNexusBase is Ownable, Pausable, ReentrancyGuard {
+contract LiquidityNexusBase is Ownable, Pausable, ReentrancyGuard, PriceGuard {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
