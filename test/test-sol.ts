@@ -10,7 +10,7 @@ interface SolidityTestParams {
   contractName: string;
   deployer: string;
   constructorArgs: () => string[];
-  initialBalance: BN;
+  initialETH: BN;
   beforeEachFn: (testContract: string) => Promise<void>;
 }
 
@@ -18,14 +18,14 @@ function solidityTestSuite<ContractType extends TestBase>({
   contractName,
   deployer,
   constructorArgs,
-  initialBalance,
+  initialETH,
   beforeEachFn,
 }: SolidityTestParams) {
   describe.only(`Solidity based tests for ${contractName}`, () => {
     let test: ContractType;
 
     beforeEach(async () => {
-      test = await deployContract<ContractType>(contractName, deployer, constructorArgs(), initialBalance);
+      test = await deployContract<ContractType>(contractName, deployer, constructorArgs(), initialETH);
       await beforeEachFn(test.options.address);
       await test.methods.beforeEach().send({ from: deployer });
     });
@@ -39,7 +39,7 @@ function solidityTestSuite<ContractType extends TestBase>({
       const name = _.get(item, "name");
       if (type == "function" && _.startsWith(name, "test")) {
         it(`contract ${name}`, async () => {
-          await _.invoke(_.invoke(test.methods, name), "send", { from: deployer });
+          await _.chain(test.methods).invoke(name).invoke("send", { from: deployer }).value();
         });
       }
     });
@@ -50,7 +50,7 @@ solidityTestSuite({
   contractName: "TestSanity",
   deployer: deployer,
   constructorArgs: () => [nexus.options.address],
-  initialBalance: bn18("10,000,000"),
+  initialETH: bn18("10,000,000"),
   beforeEachFn: async (testContract: string) => {
     await nexus.methods.setGovernance(testContract).send({ from: deployer });
   },
@@ -60,9 +60,9 @@ solidityTestSuite({
   contractName: "TestSecurity",
   deployer: deployer,
   constructorArgs: () => [nexus.options.address],
-  initialBalance: bn18("10,000,000"),
+  initialETH: bn18("10,000,000"),
   beforeEachFn: async (testContract: string) => {
-    await nexus.methods.setGovernance(testContract).send({ from: deployer });
     await Tokens.USDC().methods.transfer(testContract, bn6("300,000,000")).send({ from: usdcWhale });
+    await nexus.methods.setGovernance(testContract).send({ from: deployer });
   },
 });

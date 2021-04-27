@@ -9,9 +9,6 @@ interface TestWETH {
 }
 
 abstract contract TestNexusBase is TestBase {
-    using SafeMath for uint256;
-    using SafeERC20 for IERC20;
-
     NexusLPSushi public nexus;
 
     uint256 public constant DEADLINE = 4102444800; // 2100-01-01
@@ -29,18 +26,18 @@ abstract contract TestNexusBase is TestBase {
 
     function beforeEach() public override {
         super.beforeEach();
-        printBalances("test", address(this));
-        printBalances("nexus", address(nexus));
+        printBalances(address(this), "test balance");
+        printBalances(address(nexus), "nexus balance");
     }
 
     function afterEach() public override {
         super.afterEach();
-        printBalances("test", address(this));
-        printBalances("nexus", address(nexus));
+        printBalances(address(this), "test balance");
+        printBalances(address(nexus), "nexus balance");
     }
 
-    function printBalances(string memory name, address target) public view {
-        console.log("balances for", name, target);
+    function printBalances(address target, string memory message) public view {
+        console.log(target, message);
         console.log("ETH:", target.balance / 1 ether, target.balance % 1 ether);
         console.log("WETH:", IERC20(WETH).balanceOf(target) / 1 ether, IERC20(WETH).balanceOf(target) % 1 ether);
         console.log("USDC:", IERC20(USDC).balanceOf(target) / 1e6, IERC20(USDC).balanceOf(target) % 1e6);

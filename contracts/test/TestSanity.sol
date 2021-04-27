@@ -6,7 +6,6 @@ pragma solidity ^0.7.6;
 import "./TestNexusBase.sol";
 
 contract TestSanity is TestNexusBase {
-    using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
     constructor(NexusLPSushi uut) payable TestNexusBase(uut) {}

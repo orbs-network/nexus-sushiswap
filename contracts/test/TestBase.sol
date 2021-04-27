@@ -11,9 +11,6 @@ import "@openzeppelin/contracts/math/Math.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
 abstract contract TestBase {
-    using SafeMath for uint256;
-    using SafeERC20 for IERC20;
-
     constructor() payable {}
 
     receive() external payable {}
@@ -35,8 +32,8 @@ abstract contract TestBase {
         require(Math.max(src, dst) - Math.min(src, dst) <= delta, message);
     }
 
-    function assertReverts(address target, bytes memory data) internal {
-        (bool success, ) = target.call(data);
+    function assertReverts(string memory fn) internal {
+        (bool success, ) = address(this).call(abi.encodeWithSignature(fn));
         require(!success, "expected to revert");
     }
 }

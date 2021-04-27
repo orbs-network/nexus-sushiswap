@@ -24,12 +24,12 @@ export async function deployContract<T extends Contract>(
   name: string,
   deployer: string,
   args?: any[],
-  startValue?: BN
+  initialETH?: BN
 ) {
   const _artifact = artifact(name);
   const deployed = await contract<T>(_artifact.abi)
     .deploy({ data: _artifact.bytecode, arguments: args })
-    .send({ from: deployer, value: startValue });
+    .send({ from: deployer, value: initialETH });
   console.log(`deployed ${name} to ${deployed.options.address}`);
   tag(deployed.options.address, name);
   return contract<T>(_artifact.abi, deployed.options.address, deployed.options);
