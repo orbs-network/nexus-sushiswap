@@ -18,7 +18,7 @@ contract RebalancingStrategy3 is SushiswapIntegration {
         uint256 entryUSDC,
         uint256 entryETH
     ) internal returns (uint256 exitUSDC, uint256 exitETH) {
-        uint256 price = quote(1e18); // this is weird
+        uint256 price = quote(1 ether); // this is weird
         uint256 removedETHPrice = removedETH.mul(price);
         uint256 entryETHPrice = entryETH.mul(price);
         uint256 num = entryETH.mul(removedUSDC.add(removedETHPrice));

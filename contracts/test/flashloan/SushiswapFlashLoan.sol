@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: MIT
+// solhint-disable var-name-mixedcase
 pragma solidity ^0.7.6;
 pragma experimental ABIEncoderV2;
 
@@ -34,7 +35,7 @@ abstract contract SushiswapFlashLoan {
     }
 
     function uniswapV2Call(
-        address sender,
+        address,
         uint256 amount0,
         uint256 amount1,
         bytes calldata data
@@ -50,7 +51,7 @@ abstract contract SushiswapFlashLoan {
      * Borrowing and repaying with same token, fee is (borrowed / 0.997).
      * For repaying with the other token, use getAmountIn() on the router.
      */
-    function getSushiswapFlashloanSameTokenReturn(uint256 borrowedAmount) public view returns (uint256) {
+    function getSushiswapFlashloanSameTokenReturn(uint256 borrowedAmount) public pure returns (uint256) {
         return borrowedAmount.mul(1000).div(997).add(1);
     }
 

@@ -73,7 +73,7 @@ contract NexusLPSushi is ERC20("Nexus LP SushiSwap ETH/USDC", "NSLP"), Rebalanci
      */
     function pricePerFullShare() external view returns (uint256) {
         if (totalPairedShares == 0) return 0;
-        return uint256(1e18).mul(totalLiquidity).div(totalPairedShares);
+        return totalLiquidity.mul(1 ether).div(totalPairedShares);
     }
 
     /**
@@ -154,7 +154,7 @@ contract NexusLPSushi is ERC20("Nexus LP SushiSwap ETH/USDC", "NSLP"), Rebalanci
      * be sold by governance and compounded back inside via compoundProfits.
      */
     function claimRewards() external nonReentrant onlyGovernance {
-        _poolClaimRewards();
+        _claimRewards();
         uint256 amount = IERC20(REWARD).balanceOf(address(this));
         IERC20(REWARD).safeTransfer(msg.sender, amount);
 
@@ -172,7 +172,7 @@ contract NexusLPSushi is ERC20("Nexus LP SushiSwap ETH/USDC", "NSLP"), Rebalanci
         external
         nonReentrant
         onlyGovernance
-        priceGuard(quote(1 ether))
+        priceOracle(quote(1 ether))
         returns (
             uint256 pairedUSDC,
             uint256 pairedETH,
@@ -183,14 +183,14 @@ contract NexusLPSushi is ERC20("Nexus LP SushiSwap ETH/USDC", "NSLP"), Rebalanci
 
         if (capitalProviderRewardPercentmil > 0) {
             uint256 ownerETH = amountETH.mul(capitalProviderRewardPercentmil).div(100_000);
-            _poolSwapExactETHForUSDC(ownerETH);
+            _swapExactETHForUSDC(ownerETH);
             amountETH = amountETH.sub(ownerETH);
         }
 
         amountETH = amountETH.div(2);
-        _poolSwapExactETHForUSDC(amountETH);
+        _swapExactETHForUSDC(amountETH);
 
-        (pairedUSDC, pairedETH, liquidity) = _poolAddLiquidityAndStake(amountETH, block.timestamp); // solhint-disable-line not-rely-on-time
+        (pairedUSDC, pairedETH, liquidity) = _addLiquidityAndStake(amountETH, block.timestamp); // solhint-disable-line not-rely-on-time
         totalPairedUSDC = totalPairedUSDC.add(pairedUSDC);
         totalPairedETH = totalPairedETH.add(pairedETH);
         totalLiquidity = totalLiquidity.add(liquidity);
@@ -216,8 +216,8 @@ contract NexusLPSushi is ERC20("Nexus LP SushiSwap ETH/USDC", "NSLP"), Rebalanci
         address minterAddress,
         uint256 amountETH,
         uint256 deadline
-    ) private priceGuard(quote(1 ether)) returns (uint256 shares) {
-        (uint256 pairedUSDC, uint256 pairedETH, uint256 liquidity) = _poolAddLiquidityAndStake(amountETH, deadline);
+    ) private priceOracle(quote(1 ether)) returns (uint256 shares) {
+        (uint256 pairedUSDC, uint256 pairedETH, uint256 liquidity) = _addLiquidityAndStake(amountETH, deadline);
 
         if (totalPairedShares == 0) {
             shares = liquidity;
@@ -267,9 +267,9 @@ contract NexusLPSushi is ERC20("Nexus LP SushiSwap ETH/USDC", "NSLP"), Rebalanci
         address minterAddress,
         uint256 shares,
         uint256 deadline
-    ) private priceGuard(quote(1 ether)) {
+    ) private priceOracle(quote(1 ether)) {
         uint256 liquidity = shares.mul(totalLiquidity).div(totalPairedShares);
-        (uint256 removedETH, uint256 removedUSDC) = _poolUnstakeAndRemoveLiquidity(liquidity, deadline);
+        (uint256 removedETH, uint256 removedUSDC) = _unstakeAndRemoveLiquidity(liquidity, deadline);
 
         Minter storage minter = minters[minterAddress];
         uint256 pairedUSDC = minter.pairedUSDC.mul(shares).div(minter.pairedShares);

@@ -33,7 +33,7 @@ abstract contract TestBase {
     }
 
     function assertReverts(string memory fn) internal {
-        (bool success, ) = address(this).call(abi.encodeWithSignature(fn));
+        (bool success, ) = address(this).call(abi.encodeWithSignature(fn)); // solhint-disable-line avoid-low-level-calls
         require(!success, "expected to revert");
     }
 }

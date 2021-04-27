@@ -60,7 +60,7 @@ abstract contract AaveFlashLoan is IFlashLoanReceiver {
         address[] calldata assets,
         uint256[] calldata amounts,
         uint256[] calldata premiums,
-        address initiator, // solhint-disable-line no-unused-vars
+        address,
         bytes calldata params
     ) external override returns (bool) {
         /**

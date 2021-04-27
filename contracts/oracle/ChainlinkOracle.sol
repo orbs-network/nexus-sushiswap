@@ -12,6 +12,6 @@ contract ChainlinkOracle {
      * returns price of ETH in USD (6 decimals)
      */
     function chainlinkPriceETHUSD() public view returns (uint256) {
-        return IChainlinkOracle(CHAINLINK_ORACLE).latestAnswer() / 100; // chainlink answer in 8 decimals
+        return IChainlinkOracle(CHAINLINK_ORACLE).latestAnswer() / 100; // chainlink answer is 8 decimals
     }
 }

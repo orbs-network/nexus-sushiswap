@@ -10,7 +10,7 @@ contract PriceGuard is ChainlinkOracle {
 
     uint256 public constant MAX_SPREAD_PCM = 10_000; //10%
 
-    modifier priceGuard(uint256 priceETHUSD) {
+    modifier priceOracle(uint256 priceETHUSD) {
         uint256 oraclePrice = chainlinkPriceETHUSD();
         uint256 min = Math.min(priceETHUSD, oraclePrice);
         uint256 max = Math.max(priceETHUSD, oraclePrice);

@@ -23,11 +23,11 @@ contract SushiswapIntegration is LiquidityNexusBase {
         pathToETH[0] = USDC;
         pathToETH[1] = WETH;
 
-        IERC20(USDC).approve(ROUTER, uint256(~0));
-        IERC20(WETH).approve(ROUTER, uint256(~0));
-        IERC20(SLP).approve(ROUTER, uint256(~0));
+        IERC20(USDC).safeApprove(ROUTER, uint256(~0));
+        IERC20(WETH).safeApprove(ROUTER, uint256(~0));
+        IERC20(SLP).safeApprove(ROUTER, uint256(~0));
 
-        IERC20(SLP).approve(MASTERCHEF, uint256(~0));
+        IERC20(SLP).safeApprove(MASTERCHEF, uint256(~0));
     }
 
     /**
@@ -53,7 +53,7 @@ contract SushiswapIntegration is LiquidityNexusBase {
         inETH = IUniswapV2Router02(ROUTER).getAmountsIn(outUSDC, pathToUSDC)[0];
     }
 
-    function _poolSwapExactUSDCForETH(uint256 inUSDC) internal returns (uint256 outETH) {
+    function _swapExactUSDCForETH(uint256 inUSDC) internal returns (uint256 outETH) {
         if (inUSDC == 0) return 0;
 
         uint256[] memory amounts =
@@ -62,7 +62,7 @@ contract SushiswapIntegration is LiquidityNexusBase {
         outETH = amounts[1];
     }
 
-    function _poolSwapExactETHForUSDC(uint256 inETH) internal returns (uint256 outUSDC) {
+    function _swapExactETHForUSDC(uint256 inETH) internal returns (uint256 outUSDC) {
         if (inETH == 0) return 0;
 
         uint256[] memory amounts =
@@ -77,7 +77,7 @@ contract SushiswapIntegration is LiquidityNexusBase {
         outUSDC = amounts[1];
     }
 
-    function _poolAddLiquidityAndStake(uint256 amountETH, uint256 deadline)
+    function _addLiquidityAndStake(uint256 amountETH, uint256 deadline)
         internal
         returns (
             uint256 addedUSDC,
@@ -104,7 +104,7 @@ contract SushiswapIntegration is LiquidityNexusBase {
         IMasterChef(MASTERCHEF).deposit(POOL_ID, liquidity);
     }
 
-    function _poolUnstakeAndRemoveLiquidity(uint256 liquidity, uint256 deadline)
+    function _unstakeAndRemoveLiquidity(uint256 liquidity, uint256 deadline)
         internal
         returns (uint256 removedETH, uint256 removedUSDC)
     {
@@ -123,10 +123,11 @@ contract SushiswapIntegration is LiquidityNexusBase {
         );
     }
 
-    function _poolClaimRewards() internal {
+    function _claimRewards() internal {
         IMasterChef(MASTERCHEF).deposit(POOL_ID, 0);
     }
 
+    // TODO this can be extracted
     function isSalvagable(address token) internal override returns (bool) {
         return super.isSalvagable(token) && token != SLP && token != REWARD;
     }
