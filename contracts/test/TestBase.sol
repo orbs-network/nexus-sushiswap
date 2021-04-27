@@ -34,4 +34,9 @@ abstract contract TestBase {
     ) internal pure {
         require(Math.max(src, dst) - Math.min(src, dst) <= delta, message);
     }
+
+    function assertReverts(address target, bytes memory data) internal {
+        (bool success, ) = target.call(data);
+        require(!success, "expected to revert");
+    }
 }

@@ -3,9 +3,12 @@ pragma solidity ^0.7.6;
 pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/utils/Address.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
 import "../../interface/ISushiswapRouter.sol";
 
 abstract contract SushiswapFlashLoan {
+    using SafeMath for uint256;
+
     IUniswapV2Pair private SLP;
     address private WETH;
 
@@ -16,7 +19,7 @@ abstract contract SushiswapFlashLoan {
 
     /**
      * 1000 pcm == 1%.
-     * fn is the callback fn signature.
+     * fn - the function to execute with the loan, for example "foo(uint256,uint256)"
      * Must transfer the repay amount at the end of the callback function.
      */
     function sushiswapFlashLoan(
@@ -25,8 +28,8 @@ abstract contract SushiswapFlashLoan {
         string memory fn
     ) public {
         (uint256 rToken, uint256 rETH) = sortedReserves();
-        uint256 borrowToken = (rToken * pcmToken) / 100_000;
-        uint256 borrowETH = (rETH * pcmETH) / 100_000;
+        uint256 borrowToken = rToken.mul(pcmToken).div(100_000);
+        uint256 borrowETH = rETH.mul(pcmETH).div(100_000);
         SLP.swap(borrowToken, borrowETH, address(this), bytes(fn));
     }
 
@@ -48,7 +51,7 @@ abstract contract SushiswapFlashLoan {
      * For repaying with the other token, use getAmountIn() on the router.
      */
     function getSushiswapFlashloanSameTokenReturn(uint256 borrowedAmount) public view returns (uint256) {
-        return ((borrowedAmount * 1000) / 997) + 1;
+        return borrowedAmount.mul(1000).div(997).add(1);
     }
 
     function sortedReserves() public view returns (uint256 rToken, uint256 rETH) {

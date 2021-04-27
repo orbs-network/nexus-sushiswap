@@ -24,7 +24,7 @@ abstract contract AaveFlashLoan is IFlashLoanReceiver {
         ILendingPoolAddressesProvider(0xB53C1a33016B2DC2fF3653530bfF1848a515c8c5);
 
     /**
-     * callbackName - the function to execute with the loan, for example "foo()"
+     * fn - the function to execute with the loan, for example "foo()"
      */
     function aaveFlashLoan(
         address asset,
@@ -50,7 +50,7 @@ abstract contract AaveFlashLoan is IFlashLoanReceiver {
     }
 
     function interestForAmount(uint256 borrowedAmount) public view returns (uint256) {
-        return (borrowedAmount * LENDING_POOL().FLASHLOAN_PREMIUM_TOTAL()) / 10_000;
+        return borrowedAmount.mul(LENDING_POOL().FLASHLOAN_PREMIUM_TOTAL()).div(10_000);
     }
 
     /**

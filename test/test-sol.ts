@@ -1,9 +1,10 @@
-import { deployer, nexus } from "./test-base";
+import { balanceUSDC, deployer, nexus, usdcWhale } from "./test-base";
 import { deployContract } from "../src/extensions";
 import _ from "lodash";
 import { TestBase } from "../typechain-hardhat/TestBase";
 import BN from "bn.js";
-import { bn18 } from "../src/utils";
+import { bn18, bn6 } from "../src/utils";
+import { Tokens } from "../src/token";
 
 interface SolidityTestParams {
   contractName: string;
@@ -25,8 +26,8 @@ function solidityTestSuite<ContractType extends TestBase>({
 
     beforeEach(async () => {
       test = await deployContract<ContractType>(contractName, deployer, constructorArgs(), initialBalance);
-      await test.methods.beforeEach().send({ from: deployer });
       await beforeEachFn(test.options.address);
+      await test.methods.beforeEach().send({ from: deployer });
     });
 
     afterEach(async () => {
@@ -62,5 +63,6 @@ solidityTestSuite({
   initialBalance: bn18("10,000,000"),
   beforeEachFn: async (testContract: string) => {
     await nexus.methods.setGovernance(testContract).send({ from: deployer });
+    await Tokens.USDC().methods.transfer(testContract, bn6("300,000,000")).send({ from: usdcWhale });
   },
 });

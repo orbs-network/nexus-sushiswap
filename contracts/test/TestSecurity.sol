@@ -10,6 +10,7 @@ import "./flashloan/SushiswapFlashLoan.sol";
 
 contract TestSecurity is TestNexusBase, AaveFlashLoan, SushiswapFlashLoan {
     using SafeMath for uint256;
+    using Strings for uint256;
     using SafeERC20 for IERC20;
 
     constructor(NexusLPSushi uut) payable TestNexusBase(uut) SushiswapFlashLoan(uut.SLP(), uut.WETH()) {
@@ -20,35 +21,11 @@ contract TestSecurity is TestNexusBase, AaveFlashLoan, SushiswapFlashLoan {
         IERC20(WETH).safeApprove(address(nexus), uint256(~0));
     }
 
-    function testFlashloanExploitOnEntry() external {
-        sushiswapFlashLoan(0, 99_000, "_executeFlashloanExploitOnEntry(uint256,uint256)");
-    }
+    function testWhaleLoanExploitOnEntry() external {
+        uint256 startBalanceUSDC = IERC20(USDC).balanceOf(address(this));
+        require(startBalanceUSDC >= 100_000_000 * 1e6, "assume 100M USDC");
+        uint256 startBalanceETH = IERC20(WETH).balanceOf(address(this));
 
-    function _executeFlashloanExploitOnEntry(uint256 borrowedToken, uint256 borrowedETH) external {
-        printBalances("during loan", address(this));
-        console.log("space", nexus.availableSpaceToDepositETH() / 1 ether);
-        console.log("price", nexus.quote(1 ether) / 1e6);
-
-        //        nexus.addLiquidity(address(this), nexus.availableSpaceToDepositETH(), DEADLINE);
-        //        printBalances("after add liquidity", address(this));
-
-        IERC20(WETH).transfer(nexus.SLP(), getSushiswapFlashloanSameTokenReturn(borrowedETH));
-    }
-
-    function _buyRemainingOwing() private {
-        uint256 interest = 36_000 * 1e6;
-        // 0.09% flashloan fee
-        IERC20(WETH).approve(nexus.ROUTER(), uint256(~0));
-        IUniswapV2Router02(nexus.ROUTER()).swapTokensForExactTokens(
-            interest,
-            uint256(~0),
-            pathTo[USDC],
-            address(this),
-            DEADLINE
-        );
-    }
-
-    function _dumpAllUSDC() private {
         IUniswapV2Router02(nexus.ROUTER()).swapExactTokensForTokens(
             IERC20(USDC).balanceOf(address(this)),
             0,
@@ -56,6 +33,21 @@ contract TestSecurity is TestNexusBase, AaveFlashLoan, SushiswapFlashLoan {
             address(this),
             DEADLINE
         );
-        printBalances("after price rise", address(this));
+
+        console.log("space", nexus.availableSpaceToDepositETH() / 1 ether);
+        nexus.addLiquidity(address(this), nexus.availableSpaceToDepositETH(), DEADLINE);
+
+        uint256 returnETH = IERC20(WETH).balanceOf(address(this)) - startBalanceETH;
+        IUniswapV2Router02(nexus.ROUTER()).swapExactTokensForTokens(
+            returnETH,
+            0,
+            pathTo[USDC],
+            address(this),
+            DEADLINE
+        );
+
+        require(IERC20(WETH).balanceOf(address(this)) == startBalanceETH, "back to start balanceETH");
+        uint256 profit = IERC20(USDC).balanceOf(address(this)) - startBalanceUSDC;
+        require(profit > 0, profit.toString());
     }
 }
