@@ -50,7 +50,7 @@ contract TestSecurity is TestNexusBase, AaveFlashLoan, SushiswapFlashLoan {
             DEADLINE
         );
         assertReverts("_testWhaleExploitOnExitShouldRevert()");
-        assertCloseTo(nexus.totalPairedUSDC(), startNexusBalanceUSDC, 1e6, "all USDC in position");
+        assertCloseTo(nexus.totalPairedUSDC(), startNexusBalanceUSDC, 1e6, "assert all USDC in position");
     }
 
     function _testWhaleExploitOnExitShouldRevert() external {

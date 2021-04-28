@@ -98,23 +98,19 @@ describe("LiquidityNexus Security Tests", () => {
     expect(await balanceUSDC(deployer)).bignumber.eq(startNexusBalanceUSDC);
   });
 
-  xit("flashloan exploit? with price increased by x2", async () => {
-    const startBalance = await balanceETH(deployer);
+  it("price oracle configurable by owner", async () => {
+    // enums in the contract:
+    const oracles = {
+      chainlinkOracle: "0",
+      compoundOracle: "1",
+      noOracle: "2",
+    };
+    expect(await nexus.methods.selectedOracle().call()).eq(oracles.chainlinkOracle);
+    await nexus.methods.setPriceOracle(oracles.compoundOracle).send();
+    expect(await nexus.methods.selectedOracle().call()).eq(oracles.compoundOracle);
+    await nexus.methods.setPriceOracle(oracles.noOracle).send();
+    expect(await nexus.methods.selectedOracle().call()).eq(oracles.noOracle);
     await changeEthPrice(100);
-    await nexus.methods.addLiquidityETH(deployer, deadline).send({ value: bn18("100") });
-    await changeEthPrice(-50);
-    await nexus.methods.removeAllLiquidityETH(deployer, deadline).send();
-    const endBalance = await balanceETH(deployer);
-    expect(endBalance).bignumber.lt(startBalance);
-  });
-
-  xit("flashloan exploit? with price decreased by x2", async () => {
-    const startBalance = await balanceETH(deployer);
-    await changeEthPrice(-90);
-    await nexus.methods.addLiquidityETH(deployer, deadline).send({ value: bn18("9500") });
-    await changeEthPrice(1000);
-    await nexus.methods.removeAllLiquidityETH(deployer, deadline).send();
-    const endBalance = await balanceETH(deployer);
-    expect(endBalance).bignumber.lt(startBalance);
+    await nexus.methods.addLiquidityETH(deployer, deadline).send({ value: bn18("100") }); // will not revert
   });
 });

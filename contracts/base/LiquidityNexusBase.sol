@@ -53,6 +53,11 @@ contract LiquidityNexusBase is Ownable, Pausable, Governable, ReentrancyGuard, P
         _unpause();
     }
 
+    // enum is uint8
+    function setPriceOracle(PriceGuard.Oracle oracle) public onlyOwner {
+        _setPriceGuardOracle(oracle);
+    }
+
     /**
      * Owner can only salvage unrelated tokens that were sent by mistake.
      */

@@ -35,19 +35,6 @@ describe("LiquidityNexus Sanity Tests", () => {
     expect(await totalPairedUSDC()).bignumber.zero;
   });
 
-  it("available space to deposit", async () => {
-    const expectedETH = startNexusBalanceUSDC.mul(ether).div(startPrice);
-    const availableSpaceForETH = await nexus.methods.availableSpaceToDepositETH().call();
-    expect(availableSpaceForETH).bignumber.closeTo(expectedETH, bn18("0.00001"));
-
-    await IWETHContract.methods.deposit().send({ value: availableSpaceForETH });
-    await Tokens.WETH().methods.approve(nexus.options.address, availableSpaceForETH).send();
-
-    await nexus.methods.addLiquidity(deployer, availableSpaceForETH, deadline).send();
-
-    expect(await balanceUSDC()).bignumber.closeTo(zero, "100"); // near zero
-  });
-
   it("mint events", async () => {
     const depositTx = await nexus.methods.addLiquidityETH(deployer, deadline).send({ value: bn18("10") });
     parseEvents(sushiEthUsdPair.options.jsonInterface, sushiEthUsdPair.options.address, depositTx);
