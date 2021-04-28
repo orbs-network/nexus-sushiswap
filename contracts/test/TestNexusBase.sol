@@ -15,12 +15,13 @@ abstract contract TestNexusBase is TestBase {
     mapping(address => address[]) public pathTo;
     address public WETH; //solhint-disable-line var-name-mixedcase
     address public USDC; //solhint-disable-line var-name-mixedcase
+    uint256 public startNexusBalanceUSDC;
 
     constructor(NexusLPSushi uut) payable TestBase() {
         nexus = uut;
         WETH = nexus.WETH();
         USDC = nexus.USDC();
-        initPaths();
+        _initPaths();
         toWETH(address(this).balance);
     }
 
@@ -28,6 +29,7 @@ abstract contract TestNexusBase is TestBase {
         super.beforeEach();
         printBalances(address(this), "test balance");
         printBalances(address(nexus), "nexus balance");
+        startNexusBalanceUSDC = IERC20(USDC).balanceOf(address(nexus));
     }
 
     function afterEach() public override {
@@ -38,16 +40,16 @@ abstract contract TestNexusBase is TestBase {
 
     function printBalances(address target, string memory message) public view {
         console.log(target, message);
-        console.log("ETH:", target.balance / 1 ether, target.balance % 1 ether);
-        console.log("WETH:", IERC20(WETH).balanceOf(target) / 1 ether, IERC20(WETH).balanceOf(target) % 1 ether);
-        console.log("USDC:", IERC20(USDC).balanceOf(target) / 1e6, IERC20(USDC).balanceOf(target) % 1e6);
+        console.log("ETH:", target.balance / 1 ether);
+        console.log("WETH:", IERC20(WETH).balanceOf(target) / 1 ether);
+        console.log("USDC:", IERC20(USDC).balanceOf(target) / 1e6);
     }
 
     function toWETH(uint256 amount) public {
         TestWETH(WETH).deposit{value: amount}();
     }
 
-    function initPaths() private {
+    function _initPaths() private {
         pathTo[USDC] = new address[](2);
         pathTo[USDC][0] = WETH;
         pathTo[USDC][1] = USDC;

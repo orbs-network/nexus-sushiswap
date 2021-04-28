@@ -79,7 +79,13 @@ contract NexusLPSushi is ERC20("Nexus LP SushiSwap ETH/USDC", "NSLP"), Rebalanci
     /**
      * Depositors only deposit ETH. This convenience function allows to deposit ETH directly.
      */
-    function addLiquidityETH(address beneficiary, uint256 deadline) external payable nonReentrant whenNotPaused {
+    function addLiquidityETH(address beneficiary, uint256 deadline)
+        external
+        payable
+        nonReentrant
+        whenNotPaused
+        priceOracle(quote(1 ether))
+    {
         uint256 amountETH = msg.value;
         IWETH(WETH).deposit{value: amountETH}();
         _deposit(beneficiary, amountETH, deadline);
@@ -92,7 +98,7 @@ contract NexusLPSushi is ERC20("Nexus LP SushiSwap ETH/USDC", "NSLP"), Rebalanci
         address beneficiary,
         uint256 amountETH,
         uint256 deadline
-    ) external nonReentrant whenNotPaused {
+    ) external nonReentrant whenNotPaused priceOracle(quote(1 ether)) {
         IERC20(WETH).safeTransferFrom(msg.sender, address(this), amountETH);
         _deposit(beneficiary, amountETH, deadline);
     }
@@ -106,7 +112,7 @@ contract NexusLPSushi is ERC20("Nexus LP SushiSwap ETH/USDC", "NSLP"), Rebalanci
         address payable beneficiary,
         uint256 shares,
         uint256 deadline
-    ) external nonReentrant returns (uint256 exitETH) {
+    ) external nonReentrant priceOracle(quote(1 ether)) returns (uint256 exitETH) {
         exitETH = _withdraw(msg.sender, beneficiary, shares, deadline);
         IWETH(WETH).withdraw(exitETH);
         Address.sendValue(beneficiary, exitETH);
@@ -121,7 +127,7 @@ contract NexusLPSushi is ERC20("Nexus LP SushiSwap ETH/USDC", "NSLP"), Rebalanci
         address beneficiary,
         uint256 shares,
         uint256 deadline
-    ) external nonReentrant returns (uint256 exitETH) {
+    ) external nonReentrant priceOracle(quote(1 ether)) returns (uint256 exitETH) {
         exitETH = _withdraw(msg.sender, beneficiary, shares, deadline);
         IERC20(WETH).safeTransfer(beneficiary, exitETH);
     }
@@ -132,6 +138,7 @@ contract NexusLPSushi is ERC20("Nexus LP SushiSwap ETH/USDC", "NSLP"), Rebalanci
     function removeAllLiquidityETH(address payable beneficiary, uint256 deadline)
         external
         nonReentrant
+        priceOracle(quote(1 ether))
         returns (uint256 exitETH)
     {
         exitETH = _withdraw(msg.sender, beneficiary, balanceOf(msg.sender), deadline);
@@ -143,7 +150,12 @@ contract NexusLPSushi is ERC20("Nexus LP SushiSwap ETH/USDC", "NSLP"), Rebalanci
     /**
      * Remove the entire Nexus LP balance.
      */
-    function removeAllLiquidity(address beneficiary, uint256 deadline) external nonReentrant returns (uint256 exitETH) {
+    function removeAllLiquidity(address beneficiary, uint256 deadline)
+        external
+        nonReentrant
+        priceOracle(quote(1 ether))
+        returns (uint256 exitETH)
+    {
         exitETH = _withdraw(msg.sender, beneficiary, balanceOf(msg.sender), deadline);
         IERC20(WETH).safeTransfer(beneficiary, exitETH);
     }
@@ -172,7 +184,6 @@ contract NexusLPSushi is ERC20("Nexus LP SushiSwap ETH/USDC", "NSLP"), Rebalanci
         external
         nonReentrant
         onlyGovernance
-        priceOracle(quote(1 ether))
         returns (
             uint256 pairedUSDC,
             uint256 pairedETH,
@@ -216,7 +227,7 @@ contract NexusLPSushi is ERC20("Nexus LP SushiSwap ETH/USDC", "NSLP"), Rebalanci
         address minterAddress,
         uint256 amountETH,
         uint256 deadline
-    ) private priceOracle(quote(1 ether)) returns (uint256 shares) {
+    ) private returns (uint256 shares) {
         (uint256 pairedUSDC, uint256 pairedETH, uint256 liquidity) = _addLiquidityAndStake(amountETH, deadline);
 
         if (totalPairedShares == 0) {
@@ -267,7 +278,7 @@ contract NexusLPSushi is ERC20("Nexus LP SushiSwap ETH/USDC", "NSLP"), Rebalanci
         address minterAddress,
         uint256 shares,
         uint256 deadline
-    ) private priceOracle(quote(1 ether)) {
+    ) private {
         uint256 liquidity = shares.mul(totalLiquidity).div(totalPairedShares);
         (uint256 removedETH, uint256 removedUSDC) = _unstakeAndRemoveLiquidity(liquidity, deadline);
 

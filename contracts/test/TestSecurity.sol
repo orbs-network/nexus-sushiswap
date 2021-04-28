@@ -4,7 +4,6 @@
 pragma solidity ^0.7.6;
 
 import "./TestNexusBase.sol";
-import "../interface/ISushiswapRouter.sol";
 import "./flashloan/AaveFlashLoan.sol";
 import "./flashloan/SushiswapFlashLoan.sol";
 
@@ -30,15 +29,18 @@ contract TestSecurity is TestNexusBase, AaveFlashLoan, SushiswapFlashLoan {
             DEADLINE
         );
         assertReverts("_testWhaleExploitOnEntryShouldRevert()");
+        require(IERC20(USDC).balanceOf(address(nexus)) == startNexusBalanceUSDC, "nexus USDC loss?");
     }
 
     function _testWhaleExploitOnEntryShouldRevert() external {
-        console.log("price ETH", nexus.quote(1 ether));
+        console.log("price", nexus.quote(1 ether) / 1e6);
         nexus.addLiquidity(address(this), nexus.availableSpaceToDepositETH(), DEADLINE); // PriceGuard reverts
     }
 
     function testWhaleExploitOnExit() external {
         nexus.addLiquidity(address(this), nexus.availableSpaceToDepositETH(), DEADLINE);
+
+        require(IERC20(WETH).balanceOf(address(this)) >= 100_000 ether, "assume >= 100K WETH");
         // lower ETH price
         IUniswapV2Router02(nexus.ROUTER()).swapExactTokensForTokens(
             IERC20(WETH).balanceOf(address(this)),
@@ -48,9 +50,11 @@ contract TestSecurity is TestNexusBase, AaveFlashLoan, SushiswapFlashLoan {
             DEADLINE
         );
         assertReverts("_testWhaleExploitOnExitShouldRevert()");
+        assertCloseTo(nexus.totalPairedUSDC(), startNexusBalanceUSDC, 1e6, "all USDC in position");
     }
 
     function _testWhaleExploitOnExitShouldRevert() external {
+        console.log("price", nexus.quote(1 ether) / 1e6);
         nexus.removeAllLiquidity(address(this), DEADLINE); // PriceGuard reverts
     }
 }

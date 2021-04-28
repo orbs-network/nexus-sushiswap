@@ -98,7 +98,7 @@ describe("LiquidityNexus Security Tests", () => {
     expect(await balanceUSDC(deployer)).bignumber.eq(startNexusBalanceUSDC);
   });
 
-  it("flashloan exploit? with price increased by x2", async () => {
+  xit("flashloan exploit? with price increased by x2", async () => {
     const startBalance = await balanceETH(deployer);
     await changeEthPrice(100);
     await nexus.methods.addLiquidityETH(deployer, deadline).send({ value: bn18("100") });
@@ -108,7 +108,7 @@ describe("LiquidityNexus Security Tests", () => {
     expect(endBalance).bignumber.lt(startBalance);
   });
 
-  it("flashloan exploit? with price decreased by x2", async () => {
+  xit("flashloan exploit? with price decreased by x2", async () => {
     const startBalance = await balanceETH(deployer);
     await changeEthPrice(-90);
     await nexus.methods.addLiquidityETH(deployer, deadline).send({ value: bn18("9500") });
