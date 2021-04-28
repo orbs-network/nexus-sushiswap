@@ -112,7 +112,7 @@ export async function totalPairedUSDC() {
  * @param percent increase or decrease (- or +)
  * @returns the new eth price in usd
  */
-export async function changeEthPrice(percent: number) {
+export async function changePriceETHByPercent(percent: number) {
   console.log("changing ETH price by", percent, "%");
 
   const price = await quote();
@@ -147,8 +147,8 @@ export async function changeEthPrice(percent: number) {
  */
 export async function simulateInterestAccumulation() {
   for (let i = 0; i < 50; i++) {
-    await changeEthPrice(300);
-    await changeEthPrice(-75);
+    await changePriceETHByPercent(300);
+    await changePriceETHByPercent(-75);
   }
 }
 

@@ -2,7 +2,7 @@ import {
   balanceETH,
   balanceUSDC,
   balanceWETH,
-  changeEthPrice,
+  changePriceETHByPercent,
   deadline,
   deployer,
   expectRevert,
@@ -80,11 +80,6 @@ describe("LiquidityNexus Security Tests", () => {
     expect(await totalPairedUSDC()).bignumber.closeTo(allPairedUSDC.divn(2), bn6("10"));
     expect(await balanceUSDC()).bignumber.zero;
     expect(await balanceETH()).bignumber.zero;
-
-    // expect(await totalPairedUSDC()).bignumber.zero;
-    // expect(await balanceUSDC()).bignumber.zero;
-    // expect(await balanceETH()).bignumber.zero;
-    // expect(await balanceWETH()).bignumber.closeTo(bn18("200"), bn18("0.1"));
   });
 
   it("owner can emergency liquidate", async () => {
@@ -110,7 +105,24 @@ describe("LiquidityNexus Security Tests", () => {
     expect(await nexus.methods.selectedOracle().call()).eq(oracles.compoundOracle);
     await nexus.methods.setPriceOracle(oracles.noOracle).send();
     expect(await nexus.methods.selectedOracle().call()).eq(oracles.noOracle);
-    await changeEthPrice(100);
+    await changePriceETHByPercent(100);
     await nexus.methods.addLiquidityETH(deployer, deadline).send({ value: bn18("100") }); // will not revert
+  });
+
+  it("whale price exploit on entry - PriceGuard", async () => {
+    await changePriceETHByPercent(100);
+    await expectRevert(() => nexus.methods.addLiquidityETH(deployer, deadline).send({ value: ether }));
+  });
+
+  it("whale price exploit on exit - PriceGuard", async () => {
+    await nexus.methods
+      .addLiquidityETH(deployer, deadline)
+      .send({ value: await nexus.methods.availableSpaceToDepositETH().call() });
+
+    await changePriceETHByPercent(-95);
+    await expectRevert(() => nexus.methods.removeAllLiquidityETH(deployer, deadline).send());
+
+    expect(await nexus.methods.totalPairedUSDC().call()).bignumber.closeTo(startNexusBalanceUSDC, bn6("1")); // all USDC still invested
+    expect(await balanceUSDC()).bignumber.closeTo(zero, bn6("1")); // all USDC still invested
   });
 });

@@ -33,7 +33,7 @@ describe("LiquidityNexus Auto-Staking Tests", () => {
     await nexus.methods.addLiquidityETH(user, deadline).send({ value: principalETH, from: user });
 
     await advanceTime(hardWorkTimeInterval);
-    await doHardWork(0); //0% rewards
+    await doHardWork(0); //0% rewards to USDC provider
 
     expect(await nexus.methods.removeAllLiquidityETH(user, deadline).call({ from: user })).bignumber.closeTo(
       principalETH,
