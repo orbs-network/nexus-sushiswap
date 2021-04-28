@@ -93,22 +93,6 @@ describe("LiquidityNexus Security Tests", () => {
     expect(await balanceUSDC(deployer)).bignumber.eq(startNexusBalanceUSDC);
   });
 
-  it("price oracle configurable by owner", async () => {
-    // enums in the contract:
-    const oracles = {
-      chainlinkOracle: "0",
-      compoundOracle: "1",
-      noOracle: "2",
-    };
-    expect(await nexus.methods.selectedOracle().call()).eq(oracles.chainlinkOracle);
-    await nexus.methods.setPriceOracle(oracles.compoundOracle).send();
-    expect(await nexus.methods.selectedOracle().call()).eq(oracles.compoundOracle);
-    await nexus.methods.setPriceOracle(oracles.noOracle).send();
-    expect(await nexus.methods.selectedOracle().call()).eq(oracles.noOracle);
-    await changePriceETHByPercent(100);
-    await nexus.methods.addLiquidityETH(deployer, deadline).send({ value: bn18("100") }); // will not revert
-  });
-
   it("whale price exploit on entry - PriceGuard", async () => {
     await changePriceETHByPercent(100);
     await expectRevert(() => nexus.methods.addLiquidityETH(deployer, deadline).send({ value: ether }));
@@ -124,5 +108,27 @@ describe("LiquidityNexus Security Tests", () => {
 
     expect(await nexus.methods.totalPairedUSDC().call()).bignumber.closeTo(startNexusBalanceUSDC, bn6("1")); // all USDC still invested
     expect(await balanceUSDC()).bignumber.closeTo(zero, bn6("1")); // all USDC still invested
+  });
+
+  it("price oracle configurable by owner", async () => {
+    await changePriceETHByPercent(100);
+
+    // enums in the contract:
+    const oracles = {
+      noOracle: "0",
+      chainlinkOracle: "1",
+      compoundOracle: "2",
+    };
+
+    expect(await nexus.methods.selectedOracle().call()).eq(oracles.chainlinkOracle); // the default is chainlink
+    await expectRevert(() => nexus.methods.addLiquidityETH(deployer, deadline).send({ value: bn18("100") }));
+
+    await nexus.methods.setPriceOracle(oracles.compoundOracle).send();
+    expect(await nexus.methods.selectedOracle().call()).eq(oracles.compoundOracle);
+    await expectRevert(() => nexus.methods.addLiquidityETH(deployer, deadline).send({ value: bn18("100") }));
+
+    await nexus.methods.setPriceOracle(oracles.noOracle).send();
+    expect(await nexus.methods.selectedOracle().call()).eq(oracles.noOracle);
+    await nexus.methods.addLiquidityETH(deployer, deadline).send({ value: bn18("100") }); // will not revert
   });
 });

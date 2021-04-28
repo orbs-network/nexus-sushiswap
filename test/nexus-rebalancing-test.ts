@@ -17,7 +17,7 @@ import { bn, bn18, bn6, ether, zero } from "../src/utils";
 
 describe("RebalancingStrategy1: rebalance usd/eth such that eth provider takes all IL risk but receives all excess eth", () => {
   beforeEach(async () => {
-    await nexus.methods.setPriceOracle(2).send(); // no oracle
+    await nexus.methods.setPriceOracle(0).send(); // no oracle
   });
 
   it("handle correct per share allocation", async () => {

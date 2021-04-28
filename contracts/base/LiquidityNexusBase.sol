@@ -9,9 +9,10 @@ import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "./Governable.sol";
+import "./Salvageable.sol";
 import "../oracle/PriceGuard.sol";
 
-contract LiquidityNexusBase is Ownable, Pausable, Governable, ReentrancyGuard, PriceGuard {
+abstract contract LiquidityNexusBase is Ownable, Pausable, Governable, Salvageable, ReentrancyGuard, PriceGuard {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
@@ -61,20 +62,8 @@ contract LiquidityNexusBase is Ownable, Pausable, Governable, ReentrancyGuard, P
     /**
      * Owner can only salvage unrelated tokens that were sent by mistake.
      */
-    function salvage(address[] memory tokens_) external onlyOwner {
-        for (uint256 i = 0; i < tokens_.length; i++) {
-            address token = tokens_[i];
-            require(isSalvagable(token), "not salvagable");
-            uint256 balance = IERC20(token).balanceOf(address(this));
-            if (balance > 0) {
-                IERC20(token).safeTransfer(msg.sender, balance);
-            }
-        }
-    }
-
-    // TODO this can be extracted
-    function isSalvagable(address token) internal virtual returns (bool) {
-        return token != WETH && token != USDC;
+    function salvage(address[] memory tokens) external onlyOwner {
+        _salvage(tokens);
     }
 
     receive() external payable {} // solhint-disable-line no-empty-blocks

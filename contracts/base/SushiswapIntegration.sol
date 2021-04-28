@@ -5,7 +5,7 @@ import "./LiquidityNexusBase.sol";
 import "../interface/ISushiswapRouter.sol";
 import "../interface/ISushiMasterChef.sol";
 
-contract SushiswapIntegration is LiquidityNexusBase {
+abstract contract SushiswapIntegration is Salvageable, LiquidityNexusBase {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
@@ -127,8 +127,7 @@ contract SushiswapIntegration is LiquidityNexusBase {
         IMasterChef(MASTERCHEF).deposit(POOL_ID, 0);
     }
 
-    // TODO this can be extracted
-    function isSalvagable(address token) internal override returns (bool) {
-        return super.isSalvagable(token) && token != SLP && token != REWARD;
+    function canSalvage(address token) public override returns (bool) {
+        return token != WETH && token != USDC && token != SLP && token != REWARD;
     }
 }
