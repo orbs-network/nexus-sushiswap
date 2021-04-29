@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.7.6;
+pragma solidity 0.8.4;
 
 interface IChainlinkOracle {
     function latestAnswer() external view returns (uint256);

@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.7.6;
+pragma solidity 0.8.4;
 
 import "./LiquidityNexusBase.sol";
 import "../interface/ISushiswapRouter.sol";
 import "../interface/ISushiMasterChef.sol";
 
 abstract contract SushiswapIntegration is Salvageable, LiquidityNexusBase {
-    using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
     address public constant SLP = address(0x397FF1542f962076d0BFE58eA045FfA2d347ACa0); // Sushiswap USDC/ETH pair
@@ -23,11 +22,11 @@ abstract contract SushiswapIntegration is Salvageable, LiquidityNexusBase {
         pathToETH[0] = USDC;
         pathToETH[1] = WETH;
 
-        IERC20(USDC).safeApprove(ROUTER, uint256(~0));
-        IERC20(WETH).safeApprove(ROUTER, uint256(~0));
-        IERC20(SLP).safeApprove(ROUTER, uint256(~0));
+        IERC20(USDC).safeApprove(ROUTER, type(uint256).max);
+        IERC20(WETH).safeApprove(ROUTER, type(uint256).max);
+        IERC20(SLP).safeApprove(ROUTER, type(uint256).max);
 
-        IERC20(SLP).safeApprove(MASTERCHEF, uint256(~0));
+        IERC20(SLP).safeApprove(MASTERCHEF, type(uint256).max);
     }
 
     /**
@@ -127,7 +126,7 @@ abstract contract SushiswapIntegration is Salvageable, LiquidityNexusBase {
         IMasterChef(MASTERCHEF).deposit(POOL_ID, 0);
     }
 
-    function canSalvage(address token) public override returns (bool) {
+    function canSalvage(address token) public pure override returns (bool) {
         return token != WETH && token != USDC && token != SLP && token != REWARD;
     }
 }

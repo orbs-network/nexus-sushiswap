@@ -1,5 +1,5 @@
 import { HardhatUserConfig } from "hardhat/types";
-import "hardhat-typechain";
+import "@typechain/hardhat";
 import "hardhat-gas-reporter";
 import "hardhat-tracer";
 import "hardhat-deploy";
@@ -13,7 +13,7 @@ task("start", "").setAction(async () => {});
 
 const config: HardhatUserConfig = {
   solidity: {
-    version: "0.7.6",
+    version: "0.8.4",
     settings: {
       optimizer: {
         enabled: true,
@@ -25,7 +25,7 @@ const config: HardhatUserConfig = {
   networks: {
     hardhat: {
       forking: {
-        blockNumber: 12316571,
+        blockNumber: 12334300,
         url: "https://eth-mainnet.alchemyapi.io/v2/" + configFile().alchemyKey,
       },
       blockGasLimit: 12e6,
@@ -44,7 +44,7 @@ const config: HardhatUserConfig = {
   },
   mocha: {
     timeout: 240_000,
-    // retries: 3,
+    retries: 3,
     bail: true,
   },
   gasReporter: {

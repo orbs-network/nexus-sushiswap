@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.7.6;
+pragma solidity 0.8.4;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "./RebalancingStrategy1.sol";
 
@@ -22,7 +22,6 @@ import "./RebalancingStrategy1.sol";
  * ETH is returned to the user.
  */
 contract NexusLPSushi is ERC20("Nexus LP SushiSwap ETH/USDC", "NSLP"), RebalancingStrategy1 {
-    using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
     event Mint(address indexed sender, address indexed beneficiary, uint256 shares);
@@ -73,7 +72,7 @@ contract NexusLPSushi is ERC20("Nexus LP SushiSwap ETH/USDC", "NSLP"), Rebalanci
      */
     function pricePerFullShare() external view returns (uint256) {
         if (totalPairedShares == 0) return 0;
-        return totalLiquidity.mul(1 ether).div(totalPairedShares);
+        return (1 ether * totalLiquidity) / totalPairedShares;
     }
 
     /**
@@ -193,18 +192,18 @@ contract NexusLPSushi is ERC20("Nexus LP SushiSwap ETH/USDC", "NSLP"), Rebalanci
         IERC20(WETH).safeTransferFrom(msg.sender, address(this), amountETH);
 
         if (capitalProviderRewardPercentmil > 0) {
-            uint256 ownerETH = amountETH.mul(capitalProviderRewardPercentmil).div(100_000);
+            uint256 ownerETH = (amountETH * capitalProviderRewardPercentmil) / 100_000;
             _swapExactETHForUSDC(ownerETH);
-            amountETH = amountETH.sub(ownerETH);
+            amountETH -= ownerETH;
         }
 
-        amountETH = amountETH.div(2);
+        amountETH /= 2;
         _swapExactETHForUSDC(amountETH);
 
         (pairedUSDC, pairedETH, liquidity) = _addLiquidityAndStake(amountETH, block.timestamp); // solhint-disable-line not-rely-on-time
-        totalPairedUSDC = totalPairedUSDC.add(pairedUSDC);
-        totalPairedETH = totalPairedETH.add(pairedETH);
-        totalLiquidity = totalLiquidity.add(liquidity);
+        totalPairedUSDC += pairedUSDC;
+        totalPairedETH += pairedETH;
+        totalLiquidity += liquidity;
         // not adding to shares to distribute rewards to all shareholders
 
         emit CompoundProfits(msg.sender, liquidity);
@@ -233,18 +232,18 @@ contract NexusLPSushi is ERC20("Nexus LP SushiSwap ETH/USDC", "NSLP"), Rebalanci
         if (totalPairedShares == 0) {
             shares = liquidity;
         } else {
-            shares = liquidity.mul(totalPairedShares).div(totalLiquidity);
+            shares = (liquidity * totalPairedShares) / totalLiquidity;
         }
 
         Minter storage minter = minters[minterAddress];
-        minter.pairedUSDC = minter.pairedUSDC.add(pairedUSDC);
-        minter.pairedETH = minter.pairedETH.add(pairedETH);
-        minter.pairedShares = minter.pairedShares.add(shares);
+        minter.pairedUSDC += pairedUSDC;
+        minter.pairedETH += pairedETH;
+        minter.pairedShares += shares;
 
-        totalPairedUSDC = totalPairedUSDC.add(pairedUSDC);
-        totalPairedETH = totalPairedETH.add(pairedETH);
-        totalPairedShares = totalPairedShares.add(shares);
-        totalLiquidity = totalLiquidity.add(liquidity);
+        totalPairedUSDC += pairedUSDC;
+        totalPairedETH += pairedETH;
+        totalPairedShares += shares;
+        totalLiquidity += liquidity;
 
         emit Pair(msg.sender, minterAddress, pairedUSDC, pairedETH, liquidity);
     }
@@ -256,16 +255,16 @@ contract NexusLPSushi is ERC20("Nexus LP SushiSwap ETH/USDC", "NSLP"), Rebalanci
         uint256 deadline
     ) private returns (uint256 exitETH) {
         Minter storage minter = minters[sender];
-        shares = Math.min(shares, minter.pairedShares.add(minter.unpairedShares));
+        shares = Math.min(shares, minter.pairedShares + minter.unpairedShares);
         require(shares > 0, "sender not in minters");
 
         if (shares > minter.unpairedShares) {
-            _unpair(sender, shares.sub(minter.unpairedShares), deadline);
+            _unpair(sender, shares - minter.unpairedShares, deadline);
         }
 
-        exitETH = shares.mul(minter.unpairedETH).div(minter.unpairedShares);
-        minter.unpairedETH = minter.unpairedETH.sub(exitETH);
-        minter.unpairedShares = minter.unpairedShares.sub(shares);
+        exitETH = (shares * minter.unpairedETH) / minter.unpairedShares;
+        minter.unpairedETH -= exitETH;
+        minter.unpairedShares -= shares;
 
         _burn(sender, shares);
         emit Burn(sender, beneficiary, shares);
@@ -279,25 +278,25 @@ contract NexusLPSushi is ERC20("Nexus LP SushiSwap ETH/USDC", "NSLP"), Rebalanci
         uint256 shares,
         uint256 deadline
     ) private {
-        uint256 liquidity = shares.mul(totalLiquidity).div(totalPairedShares);
+        uint256 liquidity = (shares * totalLiquidity) / totalPairedShares;
         (uint256 removedETH, uint256 removedUSDC) = _unstakeAndRemoveLiquidity(liquidity, deadline);
 
         Minter storage minter = minters[minterAddress];
-        uint256 pairedUSDC = minter.pairedUSDC.mul(shares).div(minter.pairedShares);
-        uint256 pairedETH = minter.pairedETH.mul(shares).div(minter.pairedShares);
+        uint256 pairedUSDC = (minter.pairedUSDC * shares) / minter.pairedShares;
+        uint256 pairedETH = (minter.pairedETH * shares) / minter.pairedShares;
         (uint256 exitUSDC, uint256 exitETH) = applyRebalance(removedUSDC, removedETH, pairedUSDC, pairedETH);
 
-        minter.pairedUSDC = minter.pairedUSDC.sub(pairedUSDC);
-        minter.pairedETH = minter.pairedETH.sub(pairedETH);
-        minter.pairedShares = minter.pairedShares.sub(shares);
+        minter.pairedUSDC -= pairedUSDC;
+        minter.pairedETH -= pairedETH;
+        minter.pairedShares -= shares;
 
-        minter.unpairedETH = minter.unpairedETH.add(exitETH);
-        minter.unpairedShares = minter.unpairedShares.add(shares);
+        minter.unpairedETH += exitETH;
+        minter.unpairedShares += shares;
 
-        totalPairedUSDC = totalPairedUSDC.sub(pairedUSDC);
-        totalPairedETH = totalPairedETH.sub(pairedETH);
-        totalPairedShares = totalPairedShares.sub(shares);
-        totalLiquidity = totalLiquidity.sub(liquidity);
+        totalPairedUSDC -= pairedUSDC;
+        totalPairedETH -= pairedETH;
+        totalPairedShares -= shares;
+        totalLiquidity -= liquidity;
 
         emit Unpair(msg.sender, minterAddress, exitUSDC, exitETH, liquidity);
     }

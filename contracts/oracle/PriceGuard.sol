@@ -1,14 +1,11 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.7.6;
+pragma solidity 0.8.4;
 
-import "@openzeppelin/contracts/math/Math.sol";
-import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/utils/math/Math.sol";
 import "./ChainlinkOracle.sol";
 import "./CompoundOracle.sol";
 
 contract PriceGuard is ChainlinkOracle, CompoundOracle {
-    using SafeMath for uint256;
-
     enum Oracle {Off, Chainlink, Compound}
 
     uint256 public constant MAX_SPREAD_PCM = 10_000; //10%
@@ -20,7 +17,7 @@ contract PriceGuard is ChainlinkOracle, CompoundOracle {
             uint256 oraclePrice = selectedOracle == Oracle.Chainlink ? chainlinkPriceETHUSD() : compoundPriceETHUSD();
             uint256 min = Math.min(priceETHUSD, oraclePrice);
             uint256 max = Math.max(priceETHUSD, oraclePrice);
-            uint256 upperLimit = min.mul(MAX_SPREAD_PCM.add(100_000)).div(100_000);
+            uint256 upperLimit = (min * (MAX_SPREAD_PCM + 100_000)) / 100_000;
             require(max <= upperLimit, "PriceGuard ETHUSD");
         }
         _;

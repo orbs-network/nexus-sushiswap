@@ -1,12 +1,9 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.7.6;
+pragma solidity 0.8.4;
 
 import "./base/SushiswapIntegration.sol";
 
 contract RebalancingStrategy1 is SushiswapIntegration {
-    using SafeMath for uint256;
-    using SafeERC20 for IERC20;
-
     /**
      * Rebalance usd and eth such that the eth provider takes all IL risk but receives all excess eth,
      * while usd provider's principal is protected
@@ -15,17 +12,17 @@ contract RebalancingStrategy1 is SushiswapIntegration {
         uint256 removedUSDC,
         uint256 removedETH,
         uint256 entryUSDC,
-        uint256 entryETH // solhint-disable-line no-unused-vars
+        uint256 //entryETH
     ) internal returns (uint256 exitUSDC, uint256 exitETH) {
         if (removedUSDC > entryUSDC) {
-            uint256 deltaUSDC = removedUSDC.sub(entryUSDC);
-            exitETH = removedETH.add(_swapExactUSDCForETH(deltaUSDC));
+            uint256 deltaUSDC = removedUSDC - entryUSDC;
+            exitETH = removedETH + _swapExactUSDCForETH(deltaUSDC);
             exitUSDC = entryUSDC;
         } else {
-            uint256 deltaUSDC = entryUSDC.sub(removedUSDC);
+            uint256 deltaUSDC = entryUSDC - removedUSDC;
             uint256 deltaETH = Math.min(removedETH, amountInETHForRequestedOutUSDC(deltaUSDC));
-            exitUSDC = removedUSDC.add(_swapExactETHForUSDC(deltaETH));
-            exitETH = removedETH.sub(deltaETH);
+            exitUSDC = removedUSDC + _swapExactETHForUSDC(deltaETH);
+            exitETH = removedETH - deltaETH;
         }
     }
 }
