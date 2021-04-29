@@ -54,6 +54,8 @@ The owner can handle emergencies, but in a way that fully protects users and the
 
 * emergency exit - Since the owner is the capital provider of all USDC, in an emergency the owner can retrieve their USDC. If this happens, all Sushi LP are burned so the USDC can be retrieved. All ETH generated from this remains safe in the contract until users remove liquidity since ETH belongs to users, and their liquidity is always protected from the owner.
 
+* disable oracle price protection - The contract safeguards the ETH price of the Sushi ETH/USDC pair against manipulation by comparing it to an external ETH price oracle (Chainlink or Compound). The owner can disable this protection in an emergency where these oracles stop functioning.
+
 ## Architecture
 
 This contract is marked in yellow, its users are on the left, contracts it relies on are on the right:
@@ -92,6 +94,10 @@ Since there are two different parties supplying the ETH and USDC, the fees and i
 Fair and exploit-safe implementation of the rebalancing strategies requires non-fungibility. This means two users who deposited the same amount of ETH at different times (when ETH price was different) will be rebalanced differently so each of them has their own IL depending on the amount of USDC they were paired with from the available USDC pool. Ideally, Nexus LP would have been implemented as an NFT but this would limit compatibility with existing vault projects. Nexus LP is therefore a fungible regular ERC20 that can be transferred. Soft non-fungibility is implemented by remembering the minter's address and only allowing this original minter to burn the amount that they minted.
 
 In other words, only the original address that executed `addLiquidity` can execute `removeLiquidity`. This behavior provides seamless compatibility with DeFi vaults that can hold the Nexus LP tokens until their users choose to exit.
+
+### Protection from flash loan attacks using price oracle
+
+Since IL is divided between two parties (ETH provider and USDC provider), we must protect against IL manipulation by depositors. Different ETH depositors cannot manipulate each other, but they can manipulate the USDC provider. Manipulation requires the ETH depositor to cause an artificial drastic change in the ETH price of Sushi ETH/USDC pair by means such as flash loans. To prevent this, the contract validates the ETH price in Sushi ETH/USDC pair by comparing it to an external ETH price oracle (either [Chainlink](https://docs.chain.link/docs/architecture-decentralized-model/) or [Compound](https://compound.finance/docs/prices)). If the difference in price is extreme, the transaction is reverted.
 
 ## Further reading
 
