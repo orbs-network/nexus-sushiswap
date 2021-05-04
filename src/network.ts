@@ -4,7 +4,7 @@ import { TransactionReceipt } from "web3-core";
 
 const parseReceiptEvents = require("web3-parse-receipt-events");
 
-function hre() {
+export function hre() {
   return require("hardhat");
 }
 
@@ -21,7 +21,9 @@ export function artifact(name: string): Artifact {
 }
 
 export function tag(address: string, name: string) {
-  hre().tracer.nameTags[address] = name;
+  if (hre().tracer) {
+    hre().tracer.nameTags[address] = name;
+  }
 }
 
 export async function impersonate(address: string) {

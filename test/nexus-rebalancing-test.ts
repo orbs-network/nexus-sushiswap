@@ -7,6 +7,7 @@ import {
   deadline,
   deployer,
   nexus,
+  quote,
   simulateInterestAccumulation,
   startDeployerBalanceETH,
   startNexusBalanceUSDC,
@@ -17,7 +18,7 @@ import { bn, bn18, bn6, ether, zero } from "../src/utils";
 
 describe("RebalancingStrategy1: rebalance usd/eth such that eth provider takes all IL risk but receives all excess eth", () => {
   beforeEach(async () => {
-    await nexus.methods.setPriceOracle(0).send(); // no oracle
+    await nexus.methods.setPriceOracle(0).send(); // no oracle to allow simulating price changes
   });
 
   it("handle correct per share allocation", async () => {
@@ -88,7 +89,8 @@ describe("RebalancingStrategy1: rebalance usd/eth such that eth provider takes a
     const usdBackingForWhale = startPrice.muln(100);
     expect(await totalPairedUSDC()).bignumber.closeTo(usdBackingForWhale, bn6("0.01"));
 
-    const price25 = await changePriceETHByPercent(25);
+    await changePriceETHByPercent(25);
+    const price25 = await quote();
 
     await nexus.methods.addLiquidityETH(fishy, deadline).send({ value: bn18("1"), from: fishy });
     const usdBackingForFish = price25; // new price of 1 eth
@@ -212,7 +214,7 @@ describe("RebalancingStrategy1: rebalance usd/eth such that eth provider takes a
     await simulateInterestAccumulation();
     await changePriceETHByPercent(-50);
 
-    expect(await nexus.methods.removeAllLiquidityETH(deployer, deadline).call()).bignumber.closeTo(bn18("106"), ether);
+    expect(await nexus.methods.removeAllLiquidityETH(deployer, deadline).call()).bignumber.gt(bn18("100"));
     await nexus.methods.removeAllLiquidityETH(deployer, deadline).send();
 
     expect(await nexus.methods.totalPairedUSDC().call()).bignumber.zero;

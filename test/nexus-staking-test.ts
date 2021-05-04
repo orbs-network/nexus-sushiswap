@@ -14,16 +14,12 @@ import {
 import { bn, bn18, bn6, ether, fmt18, many } from "../src/utils";
 import { advanceTime } from "../src/network";
 import { Wallet } from "../src/wallet";
+import BN from "bn.js";
 
 describe("LiquidityNexus Auto-Staking Tests", () => {
-  beforeEach(async () => {
-    await Tokens.SUSHI().methods.approve(sushiRouter.options.address, many).send({ from: deployer });
-    await Tokens.WETH().methods.approve(nexus.options.address, many).send({ from: deployer });
-  });
-
   it("doHardWork", async () => {
+    await Tokens.SUSHI().methods.approve(sushiRouter.options.address, many).send({ from: deployer });
     expect(await Tokens.SUSHI().methods.balanceOf(deployer).call()).bignumber.zero;
-    expect(await Tokens.WETH().methods.balanceOf(deployer).call()).bignumber.zero;
 
     const user = (await Wallet.fake(1)).address;
     const initialBalanceETH = await balanceETH(user);
@@ -45,16 +41,7 @@ describe("LiquidityNexus Auto-Staking Tests", () => {
     const userProfitETH = endBalanceETH.sub(initialBalanceETH);
 
     expect(await balanceUSDC()).bignumber.closeTo(startNexusBalanceUSDC, bn6("1"));
-
-    console.log("principal", fmt18(principalETH), "ETH profit", fmt18(userProfitETH));
-
-    const dailyRate = userProfitETH.mul(ether).div(principalETH);
-
-    const APR = dailyRate.muln(365);
-    console.log("result APR: ", fmt18(APR.muln(100)), "%");
-
-    const APY = Math.pow(1 + parseFloat(fmt18(dailyRate)), 365) - 1;
-    console.log("result APY: ", APY * 100, "%");
+    printAPY(principalETH, userProfitETH);
   });
 
   it("compoundProfits 2 users", async () => {
@@ -103,5 +90,17 @@ async function doHardWork(capitalProviderRewardPercentmil: number) {
   const rewards = await Tokens.WETH().methods.balanceOf(deployer).call();
   console.log("doHardWork rewards", fmt18(rewards), "WETH");
 
+  await Tokens.WETH().methods.approve(nexus.options.address, many).send({ from: deployer });
   await nexus.methods.compoundProfits(rewards, capitalProviderRewardPercentmil).send({ from: deployer });
+}
+
+function printAPY(principalETH: BN, userProfitETH: BN) {
+  console.log("=============");
+  console.log("principal", fmt18(principalETH), "ETH profit", fmt18(userProfitETH));
+  const dailyRate = userProfitETH.mul(ether).div(principalETH);
+  const APR = dailyRate.muln(365);
+  console.log("result APR: ", fmt18(APR.muln(100)), "%");
+  const APY = Math.pow(1 + parseFloat(fmt18(dailyRate)), 365) - 1;
+  console.log("result APY: ", APY * 100, "%");
+  console.log("=============");
 }

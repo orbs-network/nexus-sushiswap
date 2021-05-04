@@ -1,12 +1,13 @@
 import {
   balanceETH,
   balanceUSDC,
-  balanceWETH,
   changePriceETHByPercent,
   deadline,
   deployer,
+  dumpPriceETH,
   expectRevert,
   nexus,
+  pumpPriceETH,
   quote,
   startDeployerBalanceETH,
   startNexusBalanceUSDC,
@@ -19,7 +20,6 @@ import { Tokens } from "../src/token";
 import { bn, bn18, bn6, ether, fmt18, fmt6, many, zero } from "../src/utils";
 import { expect } from "chai";
 import { Wallet } from "../src/wallet";
-import { web3 } from "../src/network";
 
 describe("LiquidityNexus Security Tests", () => {
   it("should revert on improper access", async () => {
@@ -93,32 +93,15 @@ describe("LiquidityNexus Security Tests", () => {
     expect(await balanceUSDC(deployer)).bignumber.eq(startNexusBalanceUSDC);
   });
 
-  it("whale price exploit on entry - PriceGuard", async () => {
-    await changePriceETHByPercent(100);
-    await expectRevert(() => nexus.methods.addLiquidityETH(deployer, deadline).send({ value: ether }));
-  });
-
-  it("whale price exploit on exit - PriceGuard", async () => {
-    await nexus.methods
-      .addLiquidityETH(deployer, deadline)
-      .send({ value: await nexus.methods.availableSpaceToDepositETH().call() });
-
-    await changePriceETHByPercent(-95);
-    await expectRevert(() => nexus.methods.removeAllLiquidityETH(deployer, deadline).send());
-
-    expect(await nexus.methods.totalPairedUSDC().call()).bignumber.closeTo(startNexusBalanceUSDC, bn6("1")); // all USDC still invested
-    expect(await balanceUSDC()).bignumber.closeTo(zero, bn6("1")); // all USDC still invested
-  });
+  // enums in the contract:
+  const oracles = {
+    noOracle: "0",
+    chainlinkOracle: "1",
+    compoundOracle: "2",
+  };
 
   it("price oracle configurable by owner", async () => {
     await changePriceETHByPercent(100);
-
-    // enums in the contract:
-    const oracles = {
-      noOracle: "0",
-      chainlinkOracle: "1",
-      compoundOracle: "2",
-    };
 
     expect(await nexus.methods.selectedOracle().call()).eq(oracles.chainlinkOracle); // the default is chainlink
     await expectRevert(() => nexus.methods.addLiquidityETH(deployer, deadline).send({ value: bn18("100") }));
@@ -130,5 +113,36 @@ describe("LiquidityNexus Security Tests", () => {
     await nexus.methods.setPriceOracle(oracles.noOracle).send();
     expect(await nexus.methods.selectedOracle().call()).eq(oracles.noOracle);
     await nexus.methods.addLiquidityETH(deployer, deadline).send({ value: bn18("100") }); // will not revert
+  });
+
+  describe("protection against price manipulations", () => {
+    [oracles.chainlinkOracle, oracles.compoundOracle].map((oracle: string) => {
+      it("whale price exploit on entry - PriceGuard", async () => {
+        await nexus.methods.setPriceOracle(oracle).send();
+        await changePriceETHByPercent(100);
+        await expectRevert(() => nexus.methods.addLiquidityETH(deployer, deadline).send({ value: ether }));
+        await Tokens.WETH().methods.approve(nexus.options.address, many).send();
+        await expectRevert(() => nexus.methods.addLiquidity(deployer, ether, deadline).send());
+      });
+    });
+
+    [oracles.chainlinkOracle, oracles.compoundOracle].map((oracle: string) => {
+      it("whale price exploit on exit - PriceGuard", async () => {
+        await nexus.methods.setPriceOracle(oracle).send();
+        await nexus.methods
+          .addLiquidityETH(deployer, deadline)
+          .send({ value: await nexus.methods.availableSpaceToDepositETH().call() });
+
+        await changePriceETHByPercent(-95);
+
+        await expectRevert(() => nexus.methods.removeAllLiquidityETH(deployer, deadline).send());
+        await expectRevert(() => nexus.methods.removeAllLiquidity(deployer, deadline).send());
+        await expectRevert(() => nexus.methods.removeLiquidityETH(deployer, "100", deadline).send());
+        await expectRevert(() => nexus.methods.removeLiquidity(deployer, "100", deadline).send());
+
+        expect(await nexus.methods.totalPairedUSDC().call()).bignumber.closeTo(startNexusBalanceUSDC, bn6("1")); // all USDC still invested
+        expect(await balanceUSDC()).bignumber.closeTo(zero, bn6("1")); // all USDC still invested
+      });
+    });
   });
 });

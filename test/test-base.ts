@@ -1,6 +1,6 @@
 import BN from "bn.js";
 import { NexusLPSushi } from "../typechain-hardhat/NexusLPSushi";
-import { bn, bn6, ether, fmt18, fmt6, many } from "../src/utils";
+import { bn, bn18, bn6, ether, fmt18, fmt6, many } from "../src/utils";
 import { IUniswapV2Pair } from "../typechain-hardhat/IUniswapV2Pair";
 import { contract, deployContract } from "../src/extensions";
 import { impersonate, resetNetworkFork, tag, web3 } from "../src/network";
@@ -10,8 +10,7 @@ import { Wallet } from "../src/wallet";
 import { IWETH } from "../typechain-hardhat/IWETH";
 import { expect } from "chai";
 
-export const usdcWhale = "0xF977814e90dA44bFA03b6295A0616a897441aceC"; // binance8
-export const usdcWhale2 = "0xBE0eB53F46cd790Cd13851d5EFf43D12404d33E8"; // binance7
+export const usdcWhale = "0x47ac0Fb4F2D84898e4D9E7b4DaB3C24507a6D503";
 
 export const deadline = many;
 export let deployer: string;
@@ -46,13 +45,11 @@ async function initWallet() {
 async function doBeforeEach() {
   await resetNetworkFork();
   await impersonate(usdcWhale);
-  await impersonate(usdcWhale2);
-  tag(usdcWhale, "USDC whale (binance8)");
-  tag(usdcWhale2, "USDC whale (binance7)");
+  tag(usdcWhale, "USDC whale");
 
   await initWallet();
 
-  nexus = await deployContract<NexusLPSushi>("NexusLPSushi", deployer);
+  nexus = await deployContract<NexusLPSushi>("NexusLPSushi", { from: deployer });
 
   sushiRouter = contract<IUniswapV2Router02>(
     require("../artifacts/contracts/interface/ISushiswapRouter.sol/IUniswapV2Router02.json").abi,
@@ -70,11 +67,9 @@ async function doBeforeEach() {
   );
 
   await supplyCapitalAsDeployer(bn6("10,000,000"));
-  [startDeployerBalanceETH, startNexusBalanceUSDC, startPrice] = await Promise.all([
-    balanceETH(deployer),
-    balanceUSDC(),
-    quote(),
-  ]);
+  startNexusBalanceUSDC = await balanceUSDC();
+  startDeployerBalanceETH = await balanceETH(deployer);
+  startPrice = await quote();
 }
 
 /**
@@ -107,7 +102,7 @@ export async function totalPairedUSDC() {
 }
 
 /**
- * Changes eth price in pool by dumping USDC or ETH from a whale
+ * Changes eth price in pool by dumping USDC or ETH from usdcWhale
  *
  * @param percent increase or decrease (- or +)
  * @returns the new eth price in usd
@@ -117,6 +112,9 @@ export async function changePriceETHByPercent(percent: number) {
 
   const price = await quote();
   console.log("start price", fmt6(price));
+
+  const startUSDC = await balanceUSDC(usdcWhale);
+  const startETH = await balanceETH(usdcWhale);
 
   const targetPrice = price.muln((1 + percent / 100) * 1000).divn(1000);
   const usdDelta = await computeUsdDeltaForTargetPrice(targetPrice);
@@ -136,10 +134,29 @@ export async function changePriceETHByPercent(percent: number) {
       )
       .send({ from: usdcWhale, value: (await balanceETH(usdcWhale)).sub(ether) });
   }
+  console.log("end price", fmt6(await quote()));
 
-  const result = await quote();
-  console.log("end price", fmt6(result));
-  return result;
+  const endUSDC = await balanceUSDC(usdcWhale);
+  const endETH = await balanceETH(usdcWhale);
+  console.log("change by USDC", fmt6(endUSDC.sub(startUSDC)));
+  console.log("change by ETH", fmt18(endETH.sub(startETH)));
+}
+
+export async function dumpPriceETH(amountETH: BN) {
+  const beforeSwapUSDC = await balanceUSDC(usdcWhale);
+  await sushiRouter.methods
+    .swapExactETHForTokens(0, [Tokens.WETH().address, Tokens.USDC().address], usdcWhale, deadline)
+    .send({ value: amountETH, from: usdcWhale });
+  return (await balanceUSDC(usdcWhale)).sub(beforeSwapUSDC);
+}
+
+export async function pumpPriceETH(amountUSDC: BN) {
+  const beforeSwapETH = await balanceETH(usdcWhale);
+  await Tokens.USDC().methods.approve(sushiRouter.options.address, many).send({ from: usdcWhale });
+  await sushiRouter.methods
+    .swapExactTokensForETH(amountUSDC, 0, [Tokens.USDC().address, Tokens.WETH().address], usdcWhale, deadline)
+    .send({ from: usdcWhale });
+  return (await balanceETH(usdcWhale)).sub(beforeSwapETH);
 }
 
 /**
@@ -153,18 +170,12 @@ export async function simulateInterestAccumulation() {
 }
 
 async function supplyCapitalAsDeployer(amount: BN) {
-  await ensureUsdBalance(deployer, amount);
+  await web3().eth.sendTransaction({ from: (await Wallet.fake(9)).address, to: usdcWhale, value: bn18("500,000") });
+  if ((await balanceUSDC(deployer)).lt(amount)) {
+    await Tokens.USDC().methods.transfer(deployer, amount).send({ from: usdcWhale });
+  }
   await Tokens.USDC().methods.approve(nexus.options.address, many).send({ from: deployer });
   await nexus.methods.depositAllCapital().send({ from: deployer });
-}
-
-/**
- * Takes USDC from whale ensuring minimum amount
- */
-async function ensureUsdBalance(address: string, amount: BN) {
-  if ((await balanceUSDC(address)).lt(amount)) {
-    await Tokens.USDC().methods.transfer(address, amount).send({ from: usdcWhale2 });
-  }
 }
 
 async function computeUsdDeltaForTargetPrice(targetPrice: BN) {

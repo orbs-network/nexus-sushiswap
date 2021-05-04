@@ -2,14 +2,20 @@ import { HardhatUserConfig } from "hardhat/types";
 import "@typechain/hardhat";
 import "hardhat-gas-reporter";
 import "hardhat-tracer";
-import "hardhat-deploy";
 import "@nomiclabs/hardhat-web3";
 import "@nomiclabs/hardhat-etherscan";
 import { task } from "hardhat/config";
 import { configFile } from "./src/configFile";
 import { bn18 } from "./src/utils";
+import { deploy } from "./src/deploy";
 
-task("start", "").setAction(async () => {});
+task("deploy", "deploy target to mainnet").setAction(async () => {
+  const name = "NexusLPSushi";
+  const owner = "0xf1fD5233E60E7Ef797025FE9DD066d60d59BcB92";
+  const gasLimit = 5_000_000;
+
+  await deploy(name, [owner], gasLimit);
+});
 
 const config: HardhatUserConfig = {
   solidity: {
@@ -25,7 +31,7 @@ const config: HardhatUserConfig = {
   networks: {
     hardhat: {
       forking: {
-        blockNumber: 12334300,
+        blockNumber: 12360000,
         url: "https://eth-mainnet.alchemyapi.io/v2/" + configFile().alchemyKey,
       },
       blockGasLimit: 12e6,
@@ -44,7 +50,7 @@ const config: HardhatUserConfig = {
   },
   mocha: {
     timeout: 240_000,
-    retries: 3,
+    retries: 1,
     bail: true,
   },
   gasReporter: {
