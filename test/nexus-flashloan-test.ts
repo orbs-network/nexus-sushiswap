@@ -14,7 +14,7 @@ import { expect } from "chai";
 
 describe("flashloan exploit simulation", () => {
   beforeEach(async () => {
-    await nexus.methods.setPriceOracle("0").send();
+    await nexus.methods.pausePriceGuard(true).send();
   });
 
   it("exploit on entry", async () => {

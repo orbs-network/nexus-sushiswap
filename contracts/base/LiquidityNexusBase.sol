@@ -7,9 +7,9 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
+import "../base/PriceGuard.sol";
 import "./Governable.sol";
 import "./Salvageable.sol";
-import "../oracle/PriceGuard.sol";
 
 abstract contract LiquidityNexusBase is Ownable, Pausable, Governable, Salvageable, ReentrancyGuard, PriceGuard {
     using SafeERC20 for IERC20;
@@ -52,9 +52,8 @@ abstract contract LiquidityNexusBase is Ownable, Pausable, Governable, Salvageab
         _unpause();
     }
 
-    // enum is uint8
-    function setPriceOracle(PriceGuard.Oracle oracle) public onlyOwner {
-        _setPriceGuardOracle(oracle);
+    function pausePriceGuard(bool _paused) public onlyOwner {
+        _pausePriceGuard(_paused);
     }
 
     /**

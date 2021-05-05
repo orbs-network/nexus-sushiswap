@@ -93,56 +93,42 @@ describe("LiquidityNexus Security Tests", () => {
     expect(await balanceUSDC(deployer)).bignumber.eq(startNexusBalanceUSDC);
   });
 
-  // enums in the contract:
-  const oracles = {
-    noOracle: "0",
-    chainlinkOracle: "1",
-    compoundOracle: "2",
-  };
-
-  it("price oracle configurable by owner", async () => {
+  it("chainlink price oracle pausable by owner", async () => {
     await changePriceETHByPercent(100);
 
-    expect(await nexus.methods.selectedOracle().call()).eq(oracles.chainlinkOracle); // the default is chainlink
+    expect(await nexus.methods.priceGuardPaused().call()).false; // chainlink turned on by default
     await expectRevert(() => nexus.methods.addLiquidityETH(deployer, deadline).send({ value: bn18("100") }));
 
-    await nexus.methods.setPriceOracle(oracles.compoundOracle).send();
-    expect(await nexus.methods.selectedOracle().call()).eq(oracles.compoundOracle);
-    await expectRevert(() => nexus.methods.addLiquidityETH(deployer, deadline).send({ value: bn18("100") }));
-
-    await nexus.methods.setPriceOracle(oracles.noOracle).send();
-    expect(await nexus.methods.selectedOracle().call()).eq(oracles.noOracle);
+    await nexus.methods.pausePriceGuard(true).send();
+    expect(await nexus.methods.priceGuardPaused().call()).true;
     await nexus.methods.addLiquidityETH(deployer, deadline).send({ value: bn18("100") }); // will not revert
+
+    await nexus.methods.pausePriceGuard(false).send();
+    expect(await nexus.methods.priceGuardPaused().call()).false;
   });
 
   describe("protection against price manipulations", () => {
-    [oracles.chainlinkOracle, oracles.compoundOracle].map((oracle: string) => {
-      it("whale price exploit on entry - PriceGuard", async () => {
-        await nexus.methods.setPriceOracle(oracle).send();
-        await changePriceETHByPercent(100);
-        await expectRevert(() => nexus.methods.addLiquidityETH(deployer, deadline).send({ value: ether }));
-        await Tokens.WETH().methods.approve(nexus.options.address, many).send();
-        await expectRevert(() => nexus.methods.addLiquidity(deployer, ether, deadline).send());
-      });
+    it("whale price exploit on entry - PriceGuard", async () => {
+      await changePriceETHByPercent(100);
+      await expectRevert(() => nexus.methods.addLiquidityETH(deployer, deadline).send({ value: ether }));
+      await Tokens.WETH().methods.approve(nexus.options.address, many).send();
+      await expectRevert(() => nexus.methods.addLiquidity(deployer, ether, deadline).send());
     });
 
-    [oracles.chainlinkOracle, oracles.compoundOracle].map((oracle: string) => {
-      it("whale price exploit on exit - PriceGuard", async () => {
-        await nexus.methods.setPriceOracle(oracle).send();
-        await nexus.methods
-          .addLiquidityETH(deployer, deadline)
-          .send({ value: await nexus.methods.availableSpaceToDepositETH().call() });
+    it("whale price exploit on exit - PriceGuard", async () => {
+      await nexus.methods
+        .addLiquidityETH(deployer, deadline)
+        .send({ value: await nexus.methods.availableSpaceToDepositETH().call() });
 
-        await changePriceETHByPercent(-95);
+      await changePriceETHByPercent(-95);
 
-        await expectRevert(() => nexus.methods.removeAllLiquidityETH(deployer, deadline).send());
-        await expectRevert(() => nexus.methods.removeAllLiquidity(deployer, deadline).send());
-        await expectRevert(() => nexus.methods.removeLiquidityETH(deployer, "100", deadline).send());
-        await expectRevert(() => nexus.methods.removeLiquidity(deployer, "100", deadline).send());
+      await expectRevert(() => nexus.methods.removeAllLiquidityETH(deployer, deadline).send());
+      await expectRevert(() => nexus.methods.removeAllLiquidity(deployer, deadline).send());
+      await expectRevert(() => nexus.methods.removeLiquidityETH(deployer, "100", deadline).send());
+      await expectRevert(() => nexus.methods.removeLiquidity(deployer, "100", deadline).send());
 
-        expect(await nexus.methods.totalPairedUSDC().call()).bignumber.closeTo(startNexusBalanceUSDC, bn6("1")); // all USDC still invested
-        expect(await balanceUSDC()).bignumber.closeTo(zero, bn6("1")); // all USDC still invested
-      });
+      expect(await nexus.methods.totalPairedUSDC().call()).bignumber.closeTo(startNexusBalanceUSDC, bn6("1")); // all USDC still invested
+      expect(await balanceUSDC()).bignumber.closeTo(zero, bn6("1")); // all USDC still invested
     });
   });
 });
