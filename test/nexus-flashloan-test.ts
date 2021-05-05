@@ -14,11 +14,16 @@ import { expect } from "chai";
 
 describe("flashloan exploit simulation", () => {
   beforeEach(async () => {
+    // we must disable price guard protection to demonstrate these exploits
     await nexus.methods.pausePriceGuard(true).send();
   });
 
+  // extreme pump ETH price, pair all available USDC for little ETH, return ETH price to normal to create IL for both, no need to unpair
   it("exploit on entry", async () => {
     const startPrice = await quote();
+    
+    // for simplicity of the test, we are doing the attack from a whale that has lots of USDC
+    // in the real world, the attacker could borrow USDC using a flash loan and become this whale temporarily
     const startBalanceETH = await balanceETH(usdcWhale);
     const startBalanceUSDC = await balanceUSDC(usdcWhale);
 
@@ -37,10 +42,10 @@ describe("flashloan exploit simulation", () => {
     console.log("total invested USDC", fmt6(investUSDC));
     const endDiffUSDC = (await balanceUSDC(usdcWhale)).sub(startBalanceUSDC);
     console.log("attacker diff USDC", fmt6(endDiffUSDC));
-    expect(endDiffUSDC).bignumber.gt(zero);
+    expect(endDiffUSDC).bignumber.gt(zero); // attacker ended up with more USDC (the huge USDC loan was repaid)
     const endDiffETH = (await balanceETH(usdcWhale)).sub(startBalanceETH);
     console.log("attacker diff ETH", fmt18(endDiffETH));
-    expect(endDiffETH).bignumber.lt(zero);
+    expect(endDiffETH).bignumber.lt(zero); // attacker loses a little ETH but this is negligible
 
     const lossETHinUSD = endDiffETH.abs().mul(startPrice).div(ether);
     console.log("attacker loss ETH in USD", fmt6(lossETHinUSD));
@@ -62,8 +67,12 @@ describe("flashloan exploit simulation", () => {
     console.log("possible additional price arbitrage", fmt6(endPrice.sub(startPrice)));
   });
 
+  // pair all available USDC, extreme dump ETH price to create IL for USDC provider, unpair, return ETH price to normal
   it("exploit on exit", async () => {
     const startPrice = await quote();
+    
+    // for simplicity of the test, we are doing the attack from a whale that has lots of ETH
+    // in the real world, the attacker could borrow ETH using a flash loan and become this whale temporarily
     const startBalanceETH = await balanceETH(usdcWhale);
     const startBalanceUSDC = await balanceUSDC(usdcWhale);
 
@@ -83,10 +92,10 @@ describe("flashloan exploit simulation", () => {
     console.log("total invested ETH", fmt18(totalInvestETH));
     const endDiffUSDC = (await balanceUSDC(usdcWhale)).sub(startBalanceUSDC);
     console.log("attacker diff USDC", fmt6(endDiffUSDC));
-    expect(endDiffUSDC).bignumber.zero;
+    expect(endDiffUSDC).bignumber.zero; // attacker did not lose any USDC
     const endDiffETH = (await balanceETH(usdcWhale)).sub(startBalanceETH);
     console.log("attacker diff ETH", fmt18(endDiffETH));
-    expect(endDiffETH).bignumber.gt(zero);
+    expect(endDiffETH).bignumber.gt(zero); // attacker ended up with more ETH (the huge ETH loan was repaid)
 
     const fee = totalInvestETH.muln(1).divn(1000);
     console.log("estimated fee ETH", fmt18(fee));
