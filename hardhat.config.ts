@@ -7,14 +7,13 @@ import "@nomiclabs/hardhat-etherscan";
 import { task } from "hardhat/config";
 import { configFile } from "./src/configFile";
 import { bn18 } from "./src/utils";
-import { askAddress, deploy } from "./src/deploy";
+import { deploy } from "./src/deploy";
 
 task("deploy", "deploy target to mainnet").setAction(async () => {
   const name = "NexusLPSushi";
-  const owner = await askAddress("owner address 0x");
   const gasLimit = 5_000_000;
 
-  await deploy(name, [owner], gasLimit, 0, true);
+  await deploy(name, [], gasLimit, 0, true);
 });
 
 const config: HardhatUserConfig = {
