@@ -8,6 +8,8 @@ So where does the USDC come from? USDC is sourced separately from Orbs Liquidity
 
 ## Development
 
+* [The deployed NexusLPSushi contract](https://etherscan.io/address/0x98a1551bc63c5b8613b1a9467c3f7adc370afaa1)
+
 ### Installation
 
 1. Run `npm install` to install all the dependencies.
@@ -97,7 +99,7 @@ In other words, only the original address that executed `addLiquidity` can execu
 
 ### Protection from flash loan attacks using price oracle
 
-Since IL is divided between two parties (ETH provider and USDC provider), we must protect against IL manipulation by depositors. Different ETH depositors cannot manipulate each other, but they can manipulate the USDC provider. Manipulation requires the ETH depositor to cause an artificial drastic change in the ETH price of Sushi ETH/USDC pair by means such as flash loans. To prevent this, the contract validates the ETH price in Sushi ETH/USDC pair by comparing it to an external ETH price oracle (either [Chainlink](https://docs.chain.link/docs/architecture-decentralized-model/) or [Compound](https://compound.finance/docs/prices)). If the difference in price is extreme, the transaction is reverted.
+Since IL is divided between two parties (ETH provider and USDC provider), we must protect against IL manipulation by depositors. Different ETH depositors cannot manipulate each other, but they can manipulate the USDC provider. Manipulation requires the ETH depositor to cause an artificial drastic change in the ETH price of Sushi ETH/USDC pair by means such as flash loans. To prevent this, the contract validates the ETH price in Sushi ETH/USDC pair by comparing it to an external ETH price oracle [Chainlink](https://docs.chain.link/docs/architecture-decentralized-model/). If the difference in price is extreme, the transaction is reverted.
 
 ## Further reading
 
