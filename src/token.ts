@@ -24,13 +24,11 @@ export namespace Tokens {
 
 export interface Token extends ERC20 {
   displayName: string;
-  address: string;
 }
 
 export function newToken(name: string, address: string) {
   const token = contract<Token>(abi, address);
   token.displayName = name;
-  token.address = address;
   tag(address, name);
   return token;
 }

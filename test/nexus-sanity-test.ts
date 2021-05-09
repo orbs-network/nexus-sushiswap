@@ -7,22 +7,21 @@ import {
   deployer,
   IWETHContract,
   nexus,
-  startDeployerBalanceETH,
   startNexusBalanceUSDC,
   startPrice,
   sushiEthUsdPair,
   totalPairedUSDC,
 } from "./test-base";
 import { Tokens } from "../src/token";
-import { bn18, bn6, ether, many, zero } from "../src/utils";
+import { bn18, ether, many, zero } from "../src/utils";
 import _ from "lodash";
 import { parseEvents } from "../src/network";
 import { Wallet } from "../src/wallet";
 
 describe("LiquidityNexus Sanity Tests", () => {
   it("empty state", async () => {
-    expect(await nexus.methods.USDC().call()).eq(Tokens.USDC().address);
-    expect(await nexus.methods.WETH().call()).eq(Tokens.WETH().address);
+    expect(await nexus.methods.USDC().call()).eq(Tokens.USDC().options.address);
+    expect(await nexus.methods.WETH().call()).eq(Tokens.WETH().options.address);
     expect(await nexus.methods.paused().call()).is.false;
     expect(await nexus.methods.owner().call()).eq(deployer);
     expect(await nexus.methods.totalLiquidity().call()).bignumber.zero;

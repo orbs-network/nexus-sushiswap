@@ -63,7 +63,7 @@ async function doBeforeEach() {
   tag(sushiEthUsdPair.options.address, "sushiETH/USDCPair");
   IWETHContract = contract<IWETH>(
     require("../artifacts/contracts/interface/ISushiswapRouter.sol/IWETH.json").abi,
-    Tokens.WETH().address
+    Tokens.WETH().options.address
   );
 
   await supplyCapitalAsDeployer(bn6("10,000,000"));
@@ -122,13 +122,19 @@ export async function changePriceETHByPercent(percent: number) {
   if (targetPrice.gt(price)) {
     await Tokens.USDC().methods.approve(sushiRouter.options.address, many).send({ from: usdcWhale });
     await sushiRouter.methods
-      .swapExactTokensForETH(usdDelta, 0, [Tokens.USDC().address, Tokens.WETH().address], usdcWhale, many)
+      .swapExactTokensForETH(
+        usdDelta,
+        0,
+        [Tokens.USDC().options.address, Tokens.WETH().options.address],
+        usdcWhale,
+        many
+      )
       .send({ from: usdcWhale });
   } else {
     await sushiRouter.methods
       .swapETHForExactTokens(
         usdDelta.muln(997).divn(1000),
-        [Tokens.WETH().address, Tokens.USDC().address],
+        [Tokens.WETH().options.address, Tokens.USDC().options.address],
         usdcWhale,
         many
       )
@@ -145,7 +151,7 @@ export async function changePriceETHByPercent(percent: number) {
 export async function dumpPriceETH(amountETH: BN) {
   const beforeSwapUSDC = await balanceUSDC(usdcWhale);
   await sushiRouter.methods
-    .swapExactETHForTokens(0, [Tokens.WETH().address, Tokens.USDC().address], usdcWhale, deadline)
+    .swapExactETHForTokens(0, [Tokens.WETH().options.address, Tokens.USDC().options.address], usdcWhale, deadline)
     .send({ value: amountETH, from: usdcWhale });
   return (await balanceUSDC(usdcWhale)).sub(beforeSwapUSDC);
 }
@@ -154,7 +160,13 @@ export async function pumpPriceETH(amountUSDC: BN) {
   const beforeSwapETH = await balanceETH(usdcWhale);
   await Tokens.USDC().methods.approve(sushiRouter.options.address, many).send({ from: usdcWhale });
   await sushiRouter.methods
-    .swapExactTokensForETH(amountUSDC, 0, [Tokens.USDC().address, Tokens.WETH().address], usdcWhale, deadline)
+    .swapExactTokensForETH(
+      amountUSDC,
+      0,
+      [Tokens.USDC().options.address, Tokens.WETH().options.address],
+      usdcWhale,
+      deadline
+    )
     .send({ from: usdcWhale });
   return (await balanceETH(usdcWhale)).sub(beforeSwapETH);
 }

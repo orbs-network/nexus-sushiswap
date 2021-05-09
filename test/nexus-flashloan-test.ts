@@ -21,7 +21,7 @@ describe("flashloan exploit simulation", () => {
   // extreme pump ETH price, pair all available USDC for little ETH, return ETH price to normal to create IL for both, no need to unpair
   it("exploit on entry", async () => {
     const startPrice = await quote();
-    
+
     // for simplicity of the test, we are doing the attack from a whale that has lots of USDC
     // in the real world, the attacker could borrow USDC using a flash loan and become this whale temporarily
     const startBalanceETH = await balanceETH(usdcWhale);
@@ -70,7 +70,7 @@ describe("flashloan exploit simulation", () => {
   // pair all available USDC, extreme dump ETH price to create IL for USDC provider, unpair, return ETH price to normal
   it("exploit on exit", async () => {
     const startPrice = await quote();
-    
+
     // for simplicity of the test, we are doing the attack from a whale that has lots of ETH
     // in the real world, the attacker could borrow ETH using a flash loan and become this whale temporarily
     const startBalanceETH = await balanceETH(usdcWhale);

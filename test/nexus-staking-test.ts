@@ -11,7 +11,7 @@ import {
   startPrice,
   sushiRouter,
 } from "./test-base";
-import { bn, bn18, bn6, ether, fmt18, many } from "../src/utils";
+import { bn18, bn6, ether, fmt18, many } from "../src/utils";
 import { advanceTime } from "../src/network";
 import { Wallet } from "../src/wallet";
 import BN from "bn.js";
@@ -85,7 +85,13 @@ async function doHardWork(capitalProviderRewardPercentmil: number) {
   console.log("doHardWork sushi", fmt18(sushiBalance), "SUSHI");
 
   await sushiRouter.methods
-    .swapExactTokensForTokens(sushiBalance, 0, [Tokens.SUSHI().address, Tokens.WETH().address], deployer, deadline)
+    .swapExactTokensForTokens(
+      sushiBalance,
+      0,
+      [Tokens.SUSHI().options.address, Tokens.WETH().options.address],
+      deployer,
+      deadline
+    )
     .send({ from: deployer });
   const rewards = await Tokens.WETH().methods.balanceOf(deployer).call();
   console.log("doHardWork rewards", fmt18(rewards), "WETH");

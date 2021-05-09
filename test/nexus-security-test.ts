@@ -4,20 +4,16 @@ import {
   changePriceETHByPercent,
   deadline,
   deployer,
-  dumpPriceETH,
   expectRevert,
   nexus,
-  pumpPriceETH,
-  quote,
   startDeployerBalanceETH,
   startNexusBalanceUSDC,
   sushiEthUsdPair,
   sushiRouter,
   totalPairedUSDC,
-  usdcWhale,
 } from "./test-base";
 import { Tokens } from "../src/token";
-import { bn, bn18, bn6, ether, fmt18, fmt6, many, zero } from "../src/utils";
+import { bn, bn18, bn6, ether, many, zero } from "../src/utils";
 import { expect } from "chai";
 import { Wallet } from "../src/wallet";
 
@@ -27,19 +23,19 @@ describe("LiquidityNexus Security Tests", () => {
   });
 
   it("salvage only allowed tokens", async () => {
-    await expectRevert(() => nexus.methods.salvage([Tokens.WETH().address]).send());
-    await expectRevert(() => nexus.methods.salvage([Tokens.USDC().address]).send());
-    await expectRevert(() => nexus.methods.salvage([Tokens.SUSHI().address]).send());
+    await expectRevert(() => nexus.methods.salvage([Tokens.WETH().options.address]).send());
+    await expectRevert(() => nexus.methods.salvage([Tokens.USDC().options.address]).send());
+    await expectRevert(() => nexus.methods.salvage([Tokens.SUSHI().options.address]).send());
     await expectRevert(() => nexus.methods.salvage([sushiEthUsdPair.options.address]).send());
 
     await sushiRouter.methods
-      .swapExactETHForTokens(0, [Tokens.WETH().address, Tokens.DAI().address], deployer, many)
+      .swapExactETHForTokens(0, [Tokens.WETH().options.address, Tokens.DAI().options.address], deployer, many)
       .send({ value: bn18("100") });
     const amount = await Tokens.DAI().methods.balanceOf(deployer).call();
     await Tokens.DAI().methods.transfer(nexus.options.address, amount).send();
     expect(await Tokens.DAI().methods.balanceOf(deployer).call()).bignumber.zero;
 
-    await nexus.methods.salvage([Tokens.DAI().address]).send();
+    await nexus.methods.salvage([Tokens.DAI().options.address]).send();
 
     expect(await Tokens.DAI().methods.balanceOf(deployer).call()).bignumber.eq(amount);
   });
