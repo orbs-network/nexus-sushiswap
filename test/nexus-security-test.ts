@@ -11,6 +11,7 @@ import {
   sushiEthUsdPair,
   sushiRouter,
   totalPairedUSDC,
+  initializeAndDepositUSDC,
 } from "./test-base";
 import { Tokens } from "../src/token";
 import { bn, bn18, bn6, ether, many, zero } from "../src/utils";
@@ -18,6 +19,10 @@ import { expect } from "chai";
 import { Wallet } from "../src/wallet";
 
 describe("LiquidityNexus Security Tests", () => {
+  beforeEach(async () => {
+    await initializeAndDepositUSDC();
+  });
+
   it("should revert on improper access", async () => {
     await expectRevert(() => nexus.methods.emergencyExit([]).send({ from: Wallet.random().address }));
   });

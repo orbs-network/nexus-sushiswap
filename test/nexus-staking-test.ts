@@ -5,6 +5,7 @@ import {
   balanceUSDC,
   deadline,
   deployer,
+  initializeAndDepositUSDC,
   IWETHContract,
   nexus,
   startNexusBalanceUSDC,
@@ -17,6 +18,10 @@ import { Wallet } from "../src/wallet";
 import BN from "bn.js";
 
 describe("LiquidityNexus Auto-Staking Tests", () => {
+  beforeEach(async () => {
+    await initializeAndDepositUSDC();
+  });
+
   it("doHardWork", async () => {
     await Tokens.SUSHI().methods.approve(sushiRouter.options.address, many).send({ from: deployer });
     expect(await Tokens.SUSHI().methods.balanceOf(deployer).call()).bignumber.zero;

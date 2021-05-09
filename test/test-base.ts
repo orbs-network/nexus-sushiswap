@@ -22,27 +22,17 @@ export let sushiRouter: IUniswapV2Router02;
 export let sushiEthUsdPair: IUniswapV2Pair;
 export let IWETHContract: IWETH;
 
-/**
- * test case state init
- */
-beforeEach(async () => {
+export async function initializeAndDepositUSDC() {
   while (true) {
     try {
-      return await doBeforeEach();
+      return await tryInitializeAndDepositUSDC();
     } catch (e) {
-      console.error(e, "\ntrying again...");
+      console.log(e, "\nfailed, trying again...");
     }
   }
-});
-
-async function initWallet() {
-  const wallet = await Wallet.fake();
-  wallet.setAsDefaultSigner();
-  deployer = wallet.address;
-  tag(deployer, "deployer");
 }
 
-async function doBeforeEach() {
+async function tryInitializeAndDepositUSDC() {
   await resetNetworkFork();
   await impersonate(usdcWhale);
   tag(usdcWhale, "USDC whale");
@@ -70,6 +60,13 @@ async function doBeforeEach() {
   startNexusBalanceUSDC = await balanceUSDC();
   startDeployerBalanceETH = await balanceETH(deployer);
   startPrice = await quote();
+}
+
+async function initWallet() {
+  const wallet = await Wallet.fake();
+  wallet.setAsDefaultSigner();
+  deployer = wallet.address;
+  tag(deployer, "deployer");
 }
 
 /**
