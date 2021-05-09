@@ -17,7 +17,7 @@ describe("flashloan exploit simulation", () => {
   beforeEach(async () => {
     await initializeAndDepositUSDC();
     // we must disable price guard protection to demonstrate these exploits
-    await nexus.methods.pausePriceGuard(true).send();
+    await nexus.methods.pausePriceGuard().send();
   });
 
   // extreme pump ETH price, pair all available USDC for little ETH, return ETH price to normal to create IL for both, no need to unpair

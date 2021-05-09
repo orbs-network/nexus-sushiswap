@@ -7,9 +7,9 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
-import "../base/PriceGuard.sol";
 import "./Governable.sol";
 import "./Salvageable.sol";
+import "./PriceGuard.sol";
 
 abstract contract LiquidityNexusBase is Ownable, Pausable, Governable, Salvageable, ReentrancyGuard, PriceGuard {
     using SafeERC20 for IERC20;
@@ -21,9 +21,7 @@ abstract contract LiquidityNexusBase is Ownable, Pausable, Governable, Salvageab
      * Only the owner is supposed to deposit USDC into this contract.
      */
     function depositCapital(uint256 amount) public onlyOwner {
-        if (amount > 0) {
-            IERC20(USDC).safeTransferFrom(msg.sender, address(this), amount);
-        }
+        IERC20(USDC).safeTransferFrom(msg.sender, address(this), amount);
     }
 
     function depositAllCapital() external onlyOwner {
@@ -52,8 +50,15 @@ abstract contract LiquidityNexusBase is Ownable, Pausable, Governable, Salvageab
         _unpause();
     }
 
-    function pausePriceGuard(bool _paused) external onlyOwner {
-        _pausePriceGuard(_paused);
+    /**
+     * Owner can disable the PriceGuard oracle in case of emergency
+     */
+    function pausePriceGuard() external onlyOwner {
+        _pausePriceGuard(true);
+    }
+
+    function unpausePriceGuard() external onlyOwner {
+        _pausePriceGuard(false);
     }
 
     /**

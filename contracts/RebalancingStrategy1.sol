@@ -3,7 +3,7 @@ pragma solidity 0.8.4;
 
 import "./base/SushiswapIntegration.sol";
 
-contract RebalancingStrategy1 is SushiswapIntegration {
+abstract contract RebalancingStrategy1 is SushiswapIntegration {
     /**
      * Rebalance usd and eth such that the eth provider takes all IL risk but receives all excess eth,
      * while usd provider's principal is protected

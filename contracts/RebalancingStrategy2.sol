@@ -6,7 +6,7 @@ import "./base/SushiswapIntegration.sol";
 /**
  * THIS REBALANCING IS NOT FULLY TESTED, NOT PRODUCTION READY, CURRENTLY UNUSED
  */
-contract RebalancingStrategy2 is SushiswapIntegration {
+abstract contract RebalancingStrategy2 is SushiswapIntegration {
     /**
      * Rebalance usd and eth such that any excess eth is swapped to usd and any excess usd is swapped to eth,
      * preferring first to compensate eth provider while maintaining usd provider initial principal

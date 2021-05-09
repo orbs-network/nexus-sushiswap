@@ -7,7 +7,7 @@ interface IChainlinkOracle {
     function latestAnswer() external view returns (uint256);
 }
 
-contract PriceGuard {
+abstract contract PriceGuard {
     event PausePriceGuard(address indexed sender, bool paused);
 
     uint256 public constant SPREAD_TOLERANCE = 10; // max 10% spread

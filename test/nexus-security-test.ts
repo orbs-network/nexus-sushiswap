@@ -100,11 +100,11 @@ describe("LiquidityNexus Security Tests", () => {
     expect(await nexus.methods.priceGuardPaused().call()).false; // chainlink turned on by default
     await expectRevert(() => nexus.methods.addLiquidityETH(deployer, deadline).send({ value: bn18("100") }));
 
-    await nexus.methods.pausePriceGuard(true).send();
+    await nexus.methods.pausePriceGuard().send();
     expect(await nexus.methods.priceGuardPaused().call()).true;
     await nexus.methods.addLiquidityETH(deployer, deadline).send({ value: bn18("100") }); // will not revert
 
-    await nexus.methods.pausePriceGuard(false).send();
+    await nexus.methods.unpausePriceGuard().send();
     expect(await nexus.methods.priceGuardPaused().call()).false;
   });
 
