@@ -52,7 +52,7 @@ abstract contract LiquidityNexusBase is Ownable, Pausable, Governable, Salvageab
         _unpause();
     }
 
-    function pausePriceGuard(bool _paused) public onlyOwner {
+    function pausePriceGuard(bool _paused) external onlyOwner {
         _pausePriceGuard(_paused);
     }
 
