@@ -13,7 +13,7 @@ abstract contract Governable {
         _;
     }
 
-    function setGovernance(address _governance) external onlyGovernance {
+    function setGovernance(address _governance) public onlyGovernance {
         require(_governance != address(0), "null governance");
         governance = _governance;
     }

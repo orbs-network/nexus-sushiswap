@@ -15,10 +15,12 @@ interface IMasterChef {
         view
         returns (
             address lpToken,
-            uint256,
-            uint256,
-            uint256
+            uint256 allocPoint,
+            uint256 lastRewardBlock,
+            uint256 accSushiPerShare
         );
+
+    function totalAllocPoint() external view returns (uint256);
 
     function massUpdatePools() external;
 }

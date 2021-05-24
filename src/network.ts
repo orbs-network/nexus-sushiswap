@@ -49,7 +49,7 @@ export async function advanceTime(seconds: number) {
   const startBlock = await web3().eth.getBlockNumber();
   const startBlockTime = (await web3().eth.getBlock(startBlock)).timestamp;
 
-  const secondsPerBlock = 13;
+  const secondsPerBlock = 13.2;
   const blocks = Math.round(seconds / secondsPerBlock);
   for (let i = 0; i < blocks; i++) {
     await network().provider.send("evm_increaseTime", [secondsPerBlock]);
@@ -57,12 +57,16 @@ export async function advanceTime(seconds: number) {
   }
   const nowBlock = await web3().eth.getBlockNumber();
   console.log("was block", startBlock.toFixed(), "now block", nowBlock);
+  const nowBlockTime = (await web3().eth.getBlock(nowBlock)).timestamp;
   console.log(
     "was block time",
     startBlockTime.toFixed(),
+    new Date(startBlockTime.toFixed() * 1000),
     "now block time",
-    (await web3().eth.getBlock(nowBlock)).timestamp
+    nowBlockTime,
+    new Date(nowBlockTime * 1000)
   );
+  return { startBlock, startBlockTime, nowBlock, nowBlockTime };
 }
 
 export function parseEvents(abis: any[], address: string, tx: TransactionReceipt) {

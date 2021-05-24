@@ -22,24 +22,24 @@ export let sushiRouter: IUniswapV2Router02;
 export let sushiEthUsdPair: IUniswapV2Pair;
 export let IWETHContract: IWETH;
 
-export async function initializeAndDepositUSDC() {
+export async function initializeAndDepositUSDC(block?: number) {
   while (true) {
     try {
-      return await tryInitializeAndDepositUSDC();
+      return await tryInitializeAndDepositUSDC(block);
     } catch (e) {
       console.log(e, "\nfailed, trying again...");
     }
   }
 }
 
-async function tryInitializeAndDepositUSDC() {
-  await resetNetworkFork();
+async function tryInitializeAndDepositUSDC(block?: number) {
+  await resetNetworkFork(block);
   await impersonate(usdcWhale);
   tag(usdcWhale, "USDC whale");
 
   await initWallet();
 
-  nexus = await deployContract<NexusLPSushi>("NexusLPSushi", { from: deployer });
+  nexus = await deployContract<NexusLPSushi>("NexusLPSushi", { from: deployer }, [deployer]);
 
   sushiRouter = contract<IUniswapV2Router02>(
     require("../artifacts/contracts/interface/ISushiswapRouter.sol/IUniswapV2Router02.json").abi,

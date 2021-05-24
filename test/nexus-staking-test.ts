@@ -22,7 +22,7 @@ describe("LiquidityNexus Auto-Staking Tests", () => {
     await initializeAndDepositUSDC();
   });
 
-  it("doHardWork", async () => {
+  it.only("doHardWork", async () => {
     await Tokens.SUSHI().methods.approve(sushiRouter.options.address, many).send({ from: deployer });
     expect(await Tokens.SUSHI().methods.balanceOf(deployer).call()).bignumber.zero;
 
@@ -83,7 +83,7 @@ describe("LiquidityNexus Auto-Staking Tests", () => {
   });
 });
 
-async function doHardWork(capitalProviderRewardPercentmil: number) {
+export async function doHardWork(capitalProviderRewardPercentmil: number) {
   await nexus.methods.claimRewards().send({ from: deployer });
 
   const sushiBalance = await Tokens.SUSHI().methods.balanceOf(deployer).call();

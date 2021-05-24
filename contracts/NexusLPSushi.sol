@@ -56,6 +56,11 @@ contract NexusLPSushi is ERC20("Nexus LP SushiSwap ETH/USDC", "NSLP"), Rebalanci
     uint256 public totalPairedShares;
     mapping(address => Minter) public minters;
 
+    constructor(address owner) {
+        transferOwnership(owner);
+        setGovernance(owner); // governance will be set later by the owner
+    }
+
     /**
      * The contract holds available USDC to be paired with newly deposited ETH to create
      * Sushi LP. If there's not enough available USDC, the ETH deposit tx will revert.
