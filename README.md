@@ -8,8 +8,6 @@ So where does the USDC come from? USDC is sourced separately from Orbs Liquidity
 
 ## Development
 
-* [The deployed NexusLPSushi contract](https://etherscan.io/address/0x98a1551bc63c5b8613b1a9467c3f7adc370afaa1)
-
 ### Installation
 
 1. Run `npm install` to install all the dependencies.
@@ -29,6 +27,12 @@ The contract is thoroughly tested using [Hardhat](https://hardhat.org) on a Main
 npm run build
 npm run test
 ```
+
+## Example integration with a vault
+
+This contract is designed to be tightly integrated with a DeFi vault such as harvest.finance / yearn.finance / autofarm.network / acryptos.com
+
+The result is an ETH-only DeFi vault where DeFi participants deposit ETH and earn ETH with considerably higher APY than normal. We have a proof of concept demonstration of such an integration as a harvest.finance vault available [here](https://github.com/orbs-network/nexus-harvestfinance/blob/master/contracts/strategies/nexus/README.md). This demonstration was not deployed and harvest was used because of their existing Sushi ETH/USDC vaults which are useful for APY comparisons.
 
 ## Contract design
 
