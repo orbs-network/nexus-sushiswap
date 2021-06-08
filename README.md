@@ -111,3 +111,4 @@ Since IL is divided between two parties (ETH provider and USDC provider), we mus
 * [Single Sided-Farming on Any DEX Via Orbs Liquidity Nexus - Part 1](https://medium.com/@talkol/single-sided-farming-on-any-dex-via-orbs-liquidity-nexus-part-1-520051f940d5)
 * [Single Sided-Farming on Any DEX Via Orbs Liquidity Nexus - Part 2](https://medium.com/@talkol/single-sided-farming-on-any-dex-via-orbs-liquidity-nexus-part-2-824e58057cb5)
 * [Single Sided-Farming on Any DEX Via Orbs Liquidity Nexus - Part 3](https://medium.com/@talkol/single-sided-farming-on-any-dex-via-orbs-liquidity-nexus-part-3-fb75efb2f91f)
+* [Orbs Integrates With Chainlink to Secure Single-Sided Farming From Flash Loan Attacks](https://talkol.medium.com/orbs-integrates-with-chainlink-to-secure-single-sided-farming-from-flash-loan-attacks-f110dd3cc977)
